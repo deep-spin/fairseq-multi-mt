@@ -37,7 +37,8 @@ from fairseq.data.audio.audio_utils import get_waveform
 log = logging.getLogger(__name__)
 
 
-MANIFEST_COLUMNS = ["id", "audio", "n_frames", "tgt_text", "speaker"]
+MANIFEST_COLUMNS = ["id", "audio", "n_frames", "src_text", "tgt_text",
+                    "speaker", "src_lang", "tgt_lang"]
 
 
 class MUSTC(Dataset):
@@ -156,8 +157,11 @@ def process(args):
                 manifest["audio"].append(zip_manifest[utt_id])
                 duration_ms = int(wav.size(1) / sr * 1000)
                 manifest["n_frames"].append(int(1 + (duration_ms - 25) / 10))
+                manifest["src_text"].append(src_utt)
                 manifest["tgt_text"].append(src_utt if args.task == "asr" else tgt_utt)
                 manifest["speaker"].append(speaker_id)
+                manifest["src_lang"].append("en")
+                manifest["tgt_lang"].append(lang)
             if is_train_split:
                 train_text.extend(manifest["tgt_text"])
             df = pd.DataFrame.from_dict(manifest)
@@ -241,6 +245,11 @@ def main():
         type=str,
         choices=["bpe", "unigram", "char"],
     ),
+    parser.add_argument(
+        "--user-defined-symbols", 
+        default=None, 
+        type=str
+    )
     parser.add_argument("--vocab-size", default=8000, type=int)
     parser.add_argument("--task", type=str, choices=["asr", "st"])
     parser.add_argument("--joint", action="store_true", help="")

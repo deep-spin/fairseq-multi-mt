@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import Dict, List, Optional
+import logging
 
 import torch
 import torch.nn as nn
@@ -11,6 +12,8 @@ from fairseq import utils
 from fairseq.modules import LayerNorm, MultiheadAttention
 from fairseq.modules.fairseq_dropout import FairseqDropout
 from fairseq.modules.quant_noise import quant_noise
+from fairseq.modules.adapter import Adapter
+from fairseq.modules.adapter_mha import AdapterMHA
 from torch import Tensor
 
 
@@ -35,6 +38,12 @@ class TransformerEncoderLayer(nn.Module):
         self.embed_dim = args.encoder_embed_dim
         self.quant_noise = getattr(args, 'quant_noise_pq', 0)
         self.quant_noise_block_size = getattr(args, 'quant_noise_pq_block_size', 8) or 8
+
+        adapter_keys = getattr(args, 'adapter_keys', None)
+        self.adapter_dim = int(getattr(args, 'adapter_enc_dim', 0))
+        self.adapter_shared = getattr(args, 'adapter_enc_type', None) == 'shared'
+        self.adapter_keys = adapter_keys if self.adapter_dim > 0 else None
+
         self.self_attn = self.build_self_attention(self.embed_dim, args)
         self.self_attn_layer_norm = LayerNorm(self.embed_dim)
         self.dropout_module = FairseqDropout(
@@ -63,6 +72,12 @@ class TransformerEncoderLayer(nn.Module):
             self.quant_noise,
             self.quant_noise_block_size,
         )
+        self.adapters = self.build_adapters(
+            self.adapter_keys,
+            self.adapter_dim,
+            self.embed_dim,
+            self.adapter_shared
+        )
 
         self.final_layer_norm = LayerNorm(self.embed_dim)
 
@@ -86,6 +101,17 @@ class TransformerEncoderLayer(nn.Module):
             qn_block_size=self.quant_noise_block_size,
         )
 
+    def build_adapters(self, adapter_keys, adapter_dim, input_dim, shared=False):
+        if not adapter_keys:
+            return None
+        
+        if shared:
+            adapter = Adapter(input_dim, adapter_dim)
+            return nn.ModuleDict({k: adapter for k in adapter_keys})
+
+        return nn.ModuleDict({k: Adapter(input_dim, adapter_dim)
+                                    for k in adapter_keys})
+
     def residual_connection(self, x, residual):
         return residual + x
 
@@ -103,7 +129,8 @@ class TransformerEncoderLayer(nn.Module):
                     state_dict["{}.{}.{}".format(name, new, m)] = state_dict[k]
                     del state_dict[k]
 
-    def forward(self, x, encoder_padding_mask: Optional[Tensor], attn_mask: Optional[Tensor] = None):
+    def forward(self, x, encoder_padding_mask, attn_mask: Optional[Tensor] = None,
+                adapter_key: str = None):
         """
         Args:
             x (Tensor): input to the layer of shape `(seq_len, batch, embed_dim)`
@@ -150,6 +177,8 @@ class TransformerEncoderLayer(nn.Module):
         x = self.activation_dropout_module(x)
         x = self.fc2(x)
         x = self.dropout_module(x)
+        if self.adapters and adapter_key:
+            x = self.adapters[adapter_key](x, x)[0]
         x = self.residual_connection(x, residual)
         if not self.normalize_before:
             x = self.final_layer_norm(x)
@@ -184,6 +213,13 @@ class TransformerDecoderLayer(nn.Module):
         self.quant_noise = getattr(args, "quant_noise_pq", 0)
         self.quant_noise_block_size = getattr(args, "quant_noise_pq_block_size", 8)
 
+        adapter_keys = getattr(args, 'adapter_keys', None)
+        self.adapter_dim = int(getattr(args, 'adapter_dec_dim', 0))
+        self.adapter_heads = int(getattr(args, 'adapter_dec_heads', 0))
+        self.adapter_shared = getattr(args, 'adapter_dec_type', None) == 'shared'
+        self.adapter_keys = adapter_keys if self.adapter_dim > 0 else None
+        self.adapter_mode = getattr(args, 'adapter_dec_mode', "serial")
+
         self.cross_self_attention = getattr(args, "cross_self_attention", False)
 
         self.self_attn = self.build_self_attention(
@@ -193,6 +229,14 @@ class TransformerDecoderLayer(nn.Module):
             add_zero_attn=add_zero_attn,
         )
 
+        self.adapters = self.build_adapters(
+            self.adapter_keys,
+            self.adapter_dim,
+            self.embed_dim,
+            self.adapter_mode,
+            self.adapter_heads,
+            self.adapter_shared
+        )
         self.activation_fn = utils.get_activation_fn(
             activation=str(args.activation_fn)
             if getattr(args, "activation_fn", None) is not None
@@ -270,6 +314,26 @@ class TransformerDecoderLayer(nn.Module):
             qn_block_size=self.quant_noise_block_size,
         )
 
+    def build_adapters(self, adapter_keys, adapter_dim, input_dim, 
+                        adapter_mode="serial", adapter_heads=0, shared=False):
+        if not adapter_keys:
+            return None
+        
+        if adapter_mode == "serial":
+            if shared:
+                adapter = Adapter(input_dim, adapter_dim)
+                return nn.ModuleDict({k: adapter for k in adapter_keys})
+            return nn.ModuleDict({k: Adapter(input_dim, adapter_dim)
+                                        for k in adapter_keys})
+        elif adapter_mode == "parallel":
+            if shared:
+                adapter = AdapterMHA(input_dim, adapter_dim, adapter_heads)
+                return nn.ModuleDict({k: adapter for k in adapter_keys})
+            return nn.ModuleDict({k: AdapterMHA(input_dim, adapter_dim, adapter_heads)
+                                        for k in adapter_keys})
+        else:
+            raise NotImplementedError
+
     def prepare_for_onnx_export_(self):
         self.onnx_trace = True
 
@@ -288,6 +352,7 @@ class TransformerDecoderLayer(nn.Module):
         self_attn_padding_mask: Optional[torch.Tensor] = None,
         need_attn: bool = False,
         need_head_weights: bool = False,
+        adapter_key: str = None,
     ):
         """
         Args:
@@ -357,6 +422,11 @@ class TransformerDecoderLayer(nn.Module):
         if not self.normalize_before:
             x = self.self_attn_layer_norm(x)
 
+        if self.adapters and adapter_key and self.adapter_mode == "parallel":
+            z = self.adapters[adapter_key](residual, 
+                                           key_padding_mask=self_attn_padding_mask,
+                                           attn_mask=self_attn_mask)
+
         if self.encoder_attn is not None and encoder_out is not None:
             residual = x
             if self.normalize_before:
@@ -395,6 +465,8 @@ class TransformerDecoderLayer(nn.Module):
         x = self.activation_dropout_module(x)
         x = self.fc2(x)
         x = self.dropout_module(x)
+        if self.adapters and adapter_key and self.adapter_mode == "serial":
+            x = self.adapters[adapter_key](x, x)[0]
         x = self.residual_connection(x, residual)
         if not self.normalize_before:
             x = self.final_layer_norm(x)
@@ -410,6 +482,11 @@ class TransformerDecoderLayer(nn.Module):
             else:
                 self_attn_state = [saved_state["prev_key"], saved_state["prev_value"]]
             return x, attn, self_attn_state
+
+        if self.adapters and adapter_key and self.adapter_mode == "parallel":
+            # logging.info(f'before parallel adapters: {torch.norm(x.flatten())}')
+            x = x + z
+            # logging.info(f'after parallel adapters: {torch.norm(x.flatten())}')
         return x, attn, None
 
     def make_generation_fast_(self, need_attn: bool = False, **kwargs):

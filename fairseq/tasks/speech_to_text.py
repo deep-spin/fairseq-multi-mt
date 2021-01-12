@@ -45,10 +45,36 @@ class SpeechToTextTask(LegacyFairseqTask):
             metavar="N",
             help="max number of tokens in the target sequence",
         )
+        parser.add_argument(
+            '--lang-pairs',
+            metavar='STR',
+            help='comma-separated list of language pairs: en-de,en-fr,de-fr'
+        )
+        # args for "Adapters for Multilingual Speech Translation"
+        parser.add_argument('--adapter-enc-dim', type=float, metavar='N',
+                            default=0.0, help='Adapter dimension in encoder.')
+        parser.add_argument('--adapter-enc-type', type=str,
+                            choices=[None, 'per_lang', 'shared'], default=None,
+                            help='Type of adapters in encoders (None means not used).') 
+        parser.add_argument('--adapter-dec-dim', type=float, metavar='N',
+                            default=0.0, help='Adapter dimension in decoder.')
+        parser.add_argument('--adapter-dec-heads', type=float, metavar='N',
+                            default=0.0, help='Adapter heads in parallel adapter.')  
+        parser.add_argument('--adapter-dec-type', type=str,
+                            choices=[None, 'per_lang', 'shared'], default=None,
+                            help='Type of adapters in encoders (None means not used).')
+        parser.add_argument('--adapter-dec-mode', type=str,
+                            choices=[None, 'serial', 'parallel'], default="serial",
+                            help='Mode of adapters in decoders (None means not used).')
+        parser.add_argument('--homogeneous-batch', action='store_true',
+                            help='Use homogeneous batch in training and evaluation.')
+        parser.add_argument('--use-mbart', action='store_true',
+                            help='Use mbart initialization.')
 
-    def __init__(self, args, tgt_dict):
+    def __init__(self, args, tgt_dict, adapter_keys=None):
         super().__init__(args)
         self.tgt_dict = tgt_dict
+        self.adapter_keys = adapter_keys
         self.data_cfg = S2TDataConfig(op.join(args.data, args.config_yaml))
 
     @classmethod
@@ -58,6 +84,34 @@ class SpeechToTextTask(LegacyFairseqTask):
         if not op.isfile(dict_path):
             raise FileNotFoundError(f"Dict not found: {dict_path}")
         tgt_dict = Dictionary.load(dict_path)
+
+        # Add adapter keys
+        tgt_langs = sorted([s.split('-')[-1] for s in args.lang_pairs.split(',')])
+        if not args.use_mbart: 
+            tgt_lang_tags = [
+                SpeechToTextDataset.LANG_TAG_TEMPLATE.format(t) for t in set(tgt_langs)
+            ]
+        else:
+            tgt_lang_tags = [
+            SpeechToTextDataset.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(tgt_langs)
+        ]
+        assert len(tgt_lang_tags) >= 1
+        adapter_keys = []
+        for t in tgt_lang_tags:
+            idx = tgt_dict.index(t)
+            logging.info(f'| {t}: {idx}')
+            if args.adapter_dec_type == 'per_lang': # use multilingual dict
+                assert idx != tgt_dict.unk_index
+                adapter_keys.append(str(idx))
+            elif args.adapter_dec_type == 'shared': # use bilingual dict
+                adapter_keys.append(tgt_lang_tags[0])
+
+        args.adapter_keys = adapter_keys
+        if args.adapter_keys and len(tgt_lang_tags) > 1:
+            assert args.homogeneous_batch
+        logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
+        logging.info(f'| adapter_keys: {args.adapter_keys}')
+
         logger.info(
             f"dictionary size ({data_cfg.vocab_filename}): " f"{len(tgt_dict):,}"
         )
@@ -65,7 +119,7 @@ class SpeechToTextTask(LegacyFairseqTask):
         if getattr(args, "train_subset", None) is not None:
             if not all(s.startswith("train") for s in args.train_subset.split(",")):
                 raise ValueError('Train splits should be named like "train*".')
-        return cls(args, tgt_dict)
+        return cls(args, tgt_dict, adapter_keys)
 
     def build_criterion(self, args):
         from fairseq import criterions
@@ -91,6 +145,8 @@ class SpeechToTextTask(LegacyFairseqTask):
             is_train_split=is_train_split,
             epoch=epoch,
             seed=self.args.seed,
+            homogeneous_batch=self.args.homogeneous_batch,
+            use_mbart=self.args.use_mbart,
         )
 
     @property
@@ -124,8 +180,9 @@ class SpeechToTextTask(LegacyFairseqTask):
         lang_token_ids = {
             i
             for s, i in self.tgt_dict.indices.items()
-            if SpeechToTextDataset.is_lang_tag(s)
+            if SpeechToTextDataset.is_lang_tag(s, use_mbart=self.args.use_mbart)
         }
+        logging.info(f'| lang_token_ids: {lang_token_ids}')
         extra_gen_cls_kwargs = {"symbols_to_strip_from_output": lang_token_ids}
         return super().build_generator(
             models, args, seq_gen_cls=None, extra_gen_cls_kwargs=extra_gen_cls_kwargs

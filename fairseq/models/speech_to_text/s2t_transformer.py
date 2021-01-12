@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import logging
 import math
 from typing import Dict, List, Optional, Tuple
@@ -206,6 +207,31 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
             type=int,
             metavar='N',
             help='freeze encoder for first N updates'
+            "--load-pretrained-decoder-from",
+            type=str,
+            metavar="STR",
+            help="model to take decoder weights from (for initialization)",
+        )
+        parser.add_argument(
+            "--finetune-modules",
+            type=str,
+            metavar="STR",
+            default=None,
+            help="If not None then freeze all modules except for the specified ones",
+        ) # for backward compatibility
+        parser.add_argument(
+            "--finetune-enc-modules",
+            type=str,
+            metavar="STR",
+            default=None,
+            help="If not None then freeze all modules except for the specified ones",
+        )
+        parser.add_argument(
+            "--finetune-dec-modules",
+            type=str,
+            metavar="STR",
+            default=None,
+            help="If not None then freeze all modules except for the specified ones",
         )
 
     @classmethod
@@ -218,20 +244,63 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
                     f"skipped pretraining because {pretraining_path} does not exist"
                 )
             else:
+                strict = not bool(args.adapter_keys)
+                if not strict:
+                    logging.warning(f'strict mode when loading encoder: {strict}')
                 encoder = checkpoint_utils.load_pretrained_component_from_model(
-                    component=encoder, checkpoint=pretraining_path
+                    component=encoder, checkpoint=pretraining_path,
+                    strict=strict
                 )
                 logger.info(f"loaded pretrained encoder from: {pretraining_path}")
         return encoder
 
     @classmethod
     def build_decoder(cls, args, task, embed_tokens):
-        return TransformerDecoderScriptable(args, task.target_dictionary, embed_tokens)
+        decoder = TransformerDecoderScriptable(args, task.target_dictionary, embed_tokens)
+        if getattr(args, "load_pretrained_decoder_from", None):
+            if os.path.isfile(args.load_pretrained_decoder_from):
+                # Load the checkpoint and check for potential dimension mismatches
+                state_dict = checkpoint_utils.load_checkpoint_to_cpu(args.load_pretrained_decoder_from)
+
+                strict = True
+                # Check for dimension mismatches
+                ckpt_embed_dim = state_dict['model']['decoder.embed_tokens.weight'].shape[0]
+                embed_dim = decoder.embed_tokens.weight.shape[0]
+                if ckpt_embed_dim != embed_dim:
+                    logging.warning(f'Checkpoint embedding dim {ckpt_embed_dim} != {embed_dim}. Ignore this pretrained layer!')
+                    del state_dict['model']['decoder.embed_tokens.weight']
+                    strict = False
+                ckpt_output_dim = None
+                if 'decoder.output_projection.weight' in state_dict['model']:
+                    ckpt_output_dim = state_dict['model']['decoder.output_projection.weight'].shape[0]
+                output_dim = decoder.output_projection.weight.shape[0]
+                if ckpt_output_dim != output_dim:
+                    logging.warning(f'Checkpoint output dim {ckpt_output_dim} != {output_dim}. Ignore this pretrained layer!')
+                    if 'decoder.output_projection.weight' in state_dict['model']:
+                        del state_dict['model']['decoder.output_projection.weight']
+                    strict = False
+
+                strict = not bool(args.adapter_keys) and strict
+                if not strict:
+                    logging.warning(f'| strict mode when loading decoder: {strict}')
+
+                decoder = checkpoint_utils.load_pretrained_component_from_model(
+                    component=decoder, 
+                    checkpoint=state_dict,
+                    strict=strict
+                )
+                logger.info(
+                    f"loaded pretrained decoder from: "
+                    f"{args.load_pretrained_decoder_from}"
+                )
+        return decoder 
 
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""
-
+        adapter_keys = getattr(task, "adapter_keys", [])
+        args.adapter_keys = adapter_keys if adapter_keys else getattr(args, "adapter_keys", []) 
+        logging.info(f'| adapter_keys: {args.adapter_keys}')
         # make sure all arguments are present in older models
         base_architecture(args)
 
@@ -245,6 +314,40 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
         )
         encoder = cls.build_encoder(args)
         decoder = cls.build_decoder(args, task, decoder_embed_tokens)
+
+        def _freeze(module):
+            for n, p in module.named_parameters():
+                logging.info(f'- freezing {n}')
+                p.requires_grad = False
+        def _unfreeze(module, finetune_modules=None):
+            if finetune_modules:
+                for n, p in module.named_parameters():
+                    for m in finetune_modules:
+                        if m in n:
+                            logging.info(f'- unfreezing {n}')
+                            p.requires_grad = True
+        
+        # Freeze modules if specified
+        finetune_enc_modules = getattr(args, "finetune_enc_modules", None)
+        finetune_dec_modules = getattr(args, "finetune_dec_modules", None)
+        # For backward compatibility
+        finetune_dec_modules = finetune_dec_modules \
+            if finetune_dec_modules else getattr(args, "finetune_modules", None)
+
+        if finetune_enc_modules or finetune_dec_modules:
+            if finetune_enc_modules:
+                finetune_enc_modules = finetune_enc_modules.split(',') \
+                    if not isinstance(finetune_enc_modules, list) else finetune_enc_modules
+            if finetune_dec_modules:
+                finetune_dec_modules = finetune_dec_modules.split(',') \
+                    if not isinstance(finetune_dec_modules, list) else finetune_dec_modules
+            logging.info("*** RESET ENCODER ***")
+            _freeze(encoder)
+            _unfreeze(encoder, finetune_enc_modules)
+            logging.info("*** RESET DECODER ***")
+            _freeze(decoder) 
+            _unfreeze(decoder, finetune_dec_modules)
+
         return cls(encoder, decoder)
 
     def get_normalized_probs(
@@ -264,7 +367,8 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
         argument in its input, which is not supported in torchscript. This
         method overwrites the forward method definition without **kwargs.
         """
-        encoder_out = self.encoder(src_tokens=src_tokens, src_lengths=src_lengths)
+        encoder_out = self.encoder(src_tokens=src_tokens, src_lengths=src_lengths,
+                                    prev_output_tokens=prev_output_tokens)
         decoder_out = self.decoder(
             prev_output_tokens=prev_output_tokens, encoder_out=encoder_out
         )
@@ -277,6 +381,7 @@ class S2TTransformerEncoder(FairseqEncoder):
 
     def __init__(self, args):
         super().__init__(None)
+        self.args = args
 
         self.encoder_freezing_updates = args.encoder_freezing_updates
         self.num_updates = 0
@@ -308,7 +413,15 @@ class S2TTransformerEncoder(FairseqEncoder):
         else:
             self.layer_norm = None
 
-    def _forward(self, src_tokens, src_lengths):
+    def _forward(self, src_tokens, src_lengths, prev_output_tokens=None):
+
+        if len(self.args.adapter_keys) == 1:
+            adapter_key = self.args.adapter_keys[0]
+        elif len(self.args.adapter_keys) > 1 and prev_output_tokens is not None:
+            adapter_key = str(prev_output_tokens[:, 1:2][0].item())
+        else:
+            adapter_key = None
+
         x, input_lengths = self.subsample(src_tokens, src_lengths)
         x = self.embed_scale * x
 
@@ -318,7 +431,7 @@ class S2TTransformerEncoder(FairseqEncoder):
         x = self.dropout_module(x)
 
         for layer in self.transformer_layers:
-            x = layer(x, encoder_padding_mask)
+            x = layer(x, encoder_padding_mask, adapter_key=adapter_key)
 
         if self.layer_norm is not None:
             x = self.layer_norm(x)
@@ -332,12 +445,12 @@ class S2TTransformerEncoder(FairseqEncoder):
             "src_lengths": [],
         }
 
-    def forward(self, src_tokens, src_lengths):
+    def forward(self, src_tokens, src_lengths, prev_output_tokens=None):
         if self.num_updates < self.encoder_freezing_updates:
             with torch.no_grad():
-                x = self._forward(src_tokens, src_lengths)
+                x = self._forward(src_tokens, src_lengths, prev_output_tokens=prev_output_tokens)
         else:
-            x = self._forward(src_tokens, src_lengths)
+            x = self._forward(src_tokens, src_lengths, prev_output_tokens=prev_output_tokens)
         return x
 
     def reorder_encoder_out(self, encoder_out, new_order):

@@ -736,7 +736,9 @@ def prune_state_dict(state_dict, model_cfg: Optional[DictConfig]):
 
 
 def load_pretrained_component_from_model(
-    component: Union[FairseqEncoder, FairseqDecoder], checkpoint: str
+    component: Union[FairseqEncoder, FairseqDecoder],
+    checkpoint: Union[str, dict],
+    strict=True,
 ):
     """
     Load a pretrained FairseqEncoder or FairseqDecoder from checkpoint into the
@@ -744,9 +746,12 @@ def load_pretrained_component_from_model(
     mismatch in the architecture of the corresponding `component` found in the
     `checkpoint` file.
     """
-    if not PathManager.exists(checkpoint):
-        raise IOError("Model file not found: {}".format(checkpoint))
-    state = load_checkpoint_to_cpu(checkpoint)
+    if isinstance(checkpoint, str):
+        if not PathManager.exists(checkpoint):
+            raise IOError("Model file not found: {}".format(checkpoint))
+        state = load_checkpoint_to_cpu(checkpoint)
+    else:
+        state = checkpoint
     if isinstance(component, FairseqEncoder):
         component_type = "encoder"
     elif isinstance(component, FairseqDecoder):
@@ -762,7 +767,15 @@ def load_pretrained_component_from_model(
             # encoder.input_layers.0.0.weight --> input_layers.0.0.weight
             component_subkey = key[len(component_type) + 1 :]
             component_state_dict[component_subkey] = state["model"][key]
-    component.load_state_dict(component_state_dict, strict=True)
+    component_before = copy.deepcopy(component)
+    component_before_keys = [k for k, _ in component_before.state_dict().items()]
+    component.load_state_dict(component_state_dict, strict=strict)
+    for n, p in component.state_dict().items():
+        if n in component_before_keys:
+            logging.info(f'*** {n}: before {torch.norm(component_before.state_dict()[n].view(-1))}')
+            logging.info(f'*** {n}: after {torch.norm(component.state_dict()[n].view(-1))}')
+        else:
+            logging.warning(f'*** {n} not loaded!')
     return component
 
 
