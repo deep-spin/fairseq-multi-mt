@@ -51,6 +51,8 @@ class SpeechToTextTask(LegacyFairseqTask):
             help='comma-separated list of language pairs: en-de,en-fr,de-fr'
         )
         # args for "Adapters for Multilingual Speech Translation"
+        parser.add_argument('--subtask', metavar='STR', default="st",
+                            help='subtask', choices=["st", "asr", "joint_st_asr"])
         parser.add_argument('--adapter-enc-dim', type=float, metavar='N',
                             default=0.0, help='Adapter dimension in encoder.')
         parser.add_argument('--adapter-enc-type', type=str,
@@ -147,6 +149,7 @@ class SpeechToTextTask(LegacyFairseqTask):
             seed=self.args.seed,
             homogeneous_batch=self.args.homogeneous_batch,
             use_mbart=self.args.use_mbart,
+            subtask=self.args.subtask,
         )
 
     @property

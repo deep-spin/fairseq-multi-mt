@@ -216,12 +216,14 @@ class SpeechToTextDataset(FairseqDataset):
         pre_tokenizer=None,
         bpe_tokenizer=None,
         use_mbart=False,
+        subtask="st",
     ):
         self.split, self.is_train_split = split, is_train_split
         self.data_cfg = data_cfg
         self.audio_paths, self.n_frames = audio_paths, n_frames
         self.n_samples = len(audio_paths)
         self.use_mbart = use_mbart
+        self.subtask = subtask
         assert len(n_frames) == self.n_samples > 0
         assert src_texts is None or len(src_texts) == self.n_samples
         assert tgt_texts is None or len(tgt_texts) == self.n_samples
@@ -297,7 +299,7 @@ class SpeechToTextDataset(FairseqDataset):
         source = torch.from_numpy(source).float()
 
         target = None
-        if self.tgt_texts is not None:
+        if self.tgt_texts is not None and self.subtask == "st":
             tokenized = self.tokenize_text(self.tgt_texts[index])
             target = self.tgt_dict.encode_line(
                 tokenized, add_if_not_exist=False, append_eos=True
@@ -310,6 +312,14 @@ class SpeechToTextDataset(FairseqDataset):
                                                                 self.tgt_langs[index].upper())
                 lang_tag_idx = self.tgt_dict.index(lang_tag)
                 target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
+        
+        if self.src_texts is not None and self.subtask == "asr":
+            # logging.info(f'self.src_texts[index]: {self.src_texts[index]}')
+            tokenized = self.tokenize_text(self.src_texts[index])
+            target = self.tgt_dict.encode_line(
+                tokenized, add_if_not_exist=False, append_eos=True
+            ).long()
+
         return index, source, target
 
     def __len__(self):
@@ -419,6 +429,7 @@ class SpeechToTextDatasetCreator(object):
         pre_tokenizer,
         bpe_tokenizer,
         use_mbart,
+        subtask,
     ) -> SpeechToTextDataset:
         audio_paths, n_frames, src_texts, tgt_texts, ids = [], [], [], [], []
         speakers, src_langs, tgt_langs = [], [], []
@@ -451,6 +462,7 @@ class SpeechToTextDatasetCreator(object):
             pre_tokenizer,
             bpe_tokenizer,
             use_mbart,
+            subtask,
         )
 
     @classmethod
@@ -485,6 +497,7 @@ class SpeechToTextDatasetCreator(object):
         seed: int,
         homogeneous_batch: bool,
         use_mbart: bool,
+        subtask: str,
     ) -> SpeechToTextDataset:
         samples = []
         _splits = splits.split(",")
@@ -514,6 +527,7 @@ class SpeechToTextDatasetCreator(object):
                 pre_tokenizer,
                 bpe_tokenizer,
                 use_mbart,
+                subtask,
             )
             for name, s in zip(_splits, samples)
         ]
