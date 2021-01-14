@@ -219,6 +219,11 @@ class TransformerDecoderLayer(nn.Module):
         self.adapter_shared = getattr(args, 'adapter_dec_type', None) == 'shared'
         self.adapter_keys = adapter_keys if self.adapter_dim > 0 else None
         self.adapter_mode = getattr(args, 'adapter_dec_mode', "serial")
+        self.adapter_parallel_to = getattr(args, 'adapter_dec_parallel_to', "layer")
+        self.adapter_parallel_weight = getattr(args, 'adapter_dec_parallel_weight', 1.0)
+        self.adapter_parallel_learnable = getattr(args, 'adapter_dec_parallel_learnable', False)
+        if self.adapter_parallel_learnable:
+            self.adapter_parallel_weight = nn.Parameter(torch.tensor(self.adapter_parallel_weight))
 
         self.cross_self_attention = getattr(args, "cross_self_attention", False)
 
@@ -367,6 +372,7 @@ class TransformerDecoderLayer(nn.Module):
         Returns:
             encoded output of shape `(seq_len, batch, embed_dim)`
         """
+        use_adapter = self.adapters and adapter_key
         if need_head_weights:
             need_attn = True
 
@@ -422,10 +428,15 @@ class TransformerDecoderLayer(nn.Module):
         if not self.normalize_before:
             x = self.self_attn_layer_norm(x)
 
-        if self.adapters and adapter_key and self.adapter_mode == "parallel":
+        if use_adapter and self.adapter_mode == "parallel":
             z = self.adapters[adapter_key](residual, 
                                            key_padding_mask=self_attn_padding_mask,
                                            attn_mask=self_attn_mask)
+            if self.adapter_parallel_to == "self_attn":
+                # logging.info(f'before parallel adapters: {torch.norm(x.flatten())}')
+                x = x + self.adapter_parallel_weight * z
+                # logging.info(f'after parallel adapters: {torch.norm(x.flatten())}')
+                # logging.info(f'adapter_parallel_weight: {self.adapter_parallel_weight}')
 
         if self.encoder_attn is not None and encoder_out is not None:
             residual = x
@@ -465,7 +476,7 @@ class TransformerDecoderLayer(nn.Module):
         x = self.activation_dropout_module(x)
         x = self.fc2(x)
         x = self.dropout_module(x)
-        if self.adapters and adapter_key and self.adapter_mode == "serial":
+        if use_adapter and self.adapter_mode == "serial":
             x = self.adapters[adapter_key](x, x)[0]
         x = self.residual_connection(x, residual)
         if not self.normalize_before:
@@ -483,10 +494,11 @@ class TransformerDecoderLayer(nn.Module):
                 self_attn_state = [saved_state["prev_key"], saved_state["prev_value"]]
             return x, attn, self_attn_state
 
-        if self.adapters and adapter_key and self.adapter_mode == "parallel":
+        if use_adapter and self.adapter_mode == "parallel" and self.adapter_parallel_to == "layer":
             # logging.info(f'before parallel adapters: {torch.norm(x.flatten())}')
-            x = x + z
+            x = x + self.adapter_parallel_weight * z
             # logging.info(f'after parallel adapters: {torch.norm(x.flatten())}')
+            # logging.info(f'adapter_parallel_weight: {self.adapter_parallel_weight}')
         return x, attn, None
 
     def make_generation_fast_(self, need_attn: bool = False, **kwargs):

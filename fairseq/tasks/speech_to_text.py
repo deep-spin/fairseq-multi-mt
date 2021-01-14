@@ -68,6 +68,13 @@ class SpeechToTextTask(LegacyFairseqTask):
         parser.add_argument('--adapter-dec-mode', type=str,
                             choices=[None, 'serial', 'parallel'], default="serial",
                             help='Mode of adapters in decoders (None means not used).')
+        parser.add_argument('--adapter-dec-parallel-to', type=str,
+                            choices=[None, 'self_attn', 'layer'], default="layer",
+                            help='position of parallel adapters (parallel to which block).')
+        parser.add_argument('--adapter-dec-parallel-weight', type=float, default=1.0,
+                            help='Weight to combine parallel adapters to the main branch')
+        parser.add_argument('--adapter-dec-parallel-learnable', action='store_true',
+                            help='Use learnable or fixed weight.')
         parser.add_argument('--homogeneous-batch', action='store_true',
                             help='Use homogeneous batch in training and evaluation.')
         parser.add_argument('--use-mbart', action='store_true',
