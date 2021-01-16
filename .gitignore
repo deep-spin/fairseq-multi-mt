@@ -134,8 +134,18 @@ experimental/*
 
 # Weights and Biases logs
 wandb/
+<<<<<<< HEAD
 *_configs_*
 *_lig*
 *_slurm*
 *_tools*
 *_*.md*
+=======
+
+# notes and slurm scripts
+*_NOTES*
+*_KEYS*
+_slurm/*
+_configs/*
+_tools/*
+>>>>>>> 1a695f83 (add loading ckpts from mBART to s2t_transformer)
