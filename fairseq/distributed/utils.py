@@ -12,6 +12,7 @@ import socket
 import struct
 import subprocess
 import warnings
+import datetime
 from argparse import Namespace
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -261,6 +262,7 @@ def distributed_init(cfg: FairseqConfig):
                 init_method=cfg.distributed_training.distributed_init_method,
                 world_size=cfg.distributed_training.distributed_world_size,
                 rank=cfg.distributed_training.distributed_rank,
+                timeout=datetime.timedelta(seconds=60),
             )
             logger.info(
                 "initialized host {} as rank {}".format(

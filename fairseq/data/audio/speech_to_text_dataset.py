@@ -278,7 +278,7 @@ class SpeechToTextDataset(FairseqDataset):
                 self.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(self.tgt_langs)
             ]
             logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
-            assert all(t in self.tgt_dict for t in tgt_lang_tags)     
+            # assert all(t in self.tgt_dict for t in tgt_lang_tags)     
 
     def tokenize_text(self, text: str):
         if self.pre_tokenizer is not None:
