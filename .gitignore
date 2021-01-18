@@ -143,8 +143,7 @@ wandb/
 =======
 
 # notes and slurm scripts
-*_NOTES*
-*_KEYS*
+*_*.md
 _slurm/*
 _configs/*
 _tools/*

@@ -79,6 +79,8 @@ class SpeechToTextTask(LegacyFairseqTask):
                             help='Use homogeneous batch in training and evaluation.')
         parser.add_argument('--use-mbart', action='store_true',
                             help='Use mbart initialization.')
+        parser.add_argument('--update-state-dict-mbart', action='store_true',
+                            help='Update mbart initialization for multihead-attention layer.')
 
     def __init__(self, args, tgt_dict, adapter_keys=None):
         super().__init__(args)
@@ -104,6 +106,9 @@ class SpeechToTextTask(LegacyFairseqTask):
             tgt_lang_tags = [
             SpeechToTextDataset.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(tgt_langs)
         ]
+            for i, t in enumerate(tgt_lang_tags):
+                if t not in tgt_dict:
+                    tgt_lang_tags[i] = t.split("_")[0] + "_XX]"
         assert len(tgt_lang_tags) >= 1
         adapter_keys = []
         for t in tgt_lang_tags:
