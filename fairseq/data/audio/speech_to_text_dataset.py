@@ -313,6 +313,8 @@ class SpeechToTextDataset(FairseqDataset):
                 else:
                     lang_tag = self.LANG_TAG_MBART_TEMPLATE.format(self.tgt_langs[index],
                                                                 self.tgt_langs[index].upper())
+                    if lang_tag not in self.tgt_dict:
+                        lang_tag = lang_tag.split("_")[0] + "_XX]"
                 lang_tag_idx = self.tgt_dict.index(lang_tag)
                 target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
         

@@ -197,7 +197,7 @@ class SpeechToTextTask(LegacyFairseqTask):
             for s, i in self.tgt_dict.indices.items()
             if SpeechToTextDataset.is_lang_tag(s, use_mbart=self.args.use_mbart)
         }
-        logging.info(f'| lang_token_ids: {lang_token_ids}')
+        logging.info(f'| lang_token_ids to strip from output: {lang_token_ids}')
         extra_gen_cls_kwargs = {"symbols_to_strip_from_output": lang_token_ids}
         return super().build_generator(
             models, args, seq_gen_cls=None, extra_gen_cls_kwargs=extra_gen_cls_kwargs
