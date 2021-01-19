@@ -280,7 +280,7 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
                         del state_dict['model']['decoder.output_projection.weight']
                     strict = False
 
-                strict = not bool(args.adapter_keys) and strict
+                strict = not bool(args.adapter_keys) and strict and not args.use_mbart
                 if not strict:
                     logging.warning(f'| strict mode when loading decoder: {strict}')
 
