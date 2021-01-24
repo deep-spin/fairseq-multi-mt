@@ -289,8 +289,7 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
                     if getattr(args, "update_state_dict_mbart", False):
                         logging.info(f'Update state_dict if using mbart for init')
                         checkpoint_utils.upgrade_state_dict_named(state_dict['model'], "")
-                    else:
-                        logging.info(f'Random init for k, q, v proj in multihead attention layer')
+
                 decoder = checkpoint_utils.load_pretrained_component_from_model(
                     component=decoder, 
                     checkpoint=state_dict,
