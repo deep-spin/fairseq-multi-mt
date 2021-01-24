@@ -263,7 +263,8 @@ class SpeechToTextDataset(FairseqDataset):
         if not use_mbart:
             pattern = cls.LANG_TAG_TEMPLATE.replace("{}", "(.*)")
         else:
-            pattern = cls.LANG_TAG_MBART_TEMPLATE.replace("{}", "(.*)")
+            # pattern = cls.LANG_TAG_MBART_TEMPLATE.replace("{}", "(.*)")
+            pattern = "\[(.*)_(.*)\]"
         return re.match(pattern, token)
 
     def check_tgt_lang_tag(self):
