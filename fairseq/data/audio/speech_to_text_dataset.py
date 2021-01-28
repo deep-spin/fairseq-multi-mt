@@ -263,7 +263,6 @@ class SpeechToTextDataset(FairseqDataset):
         if not use_mbart:
             pattern = cls.LANG_TAG_TEMPLATE.replace("{}", "(.*)")
         else:
-            # pattern = cls.LANG_TAG_MBART_TEMPLATE.replace("{}", "(.*)")
             pattern = "\[(.*)_(.*)\]"
         return re.match(pattern, token)
 
@@ -325,6 +324,17 @@ class SpeechToTextDataset(FairseqDataset):
             target = self.tgt_dict.encode_line(
                 tokenized, add_if_not_exist=False, append_eos=True
             ).long()
+            if self.data_cfg.prepend_tgt_lang_tag:
+                if not self.use_mbart:
+                    lang_tag = self.LANG_TAG_TEMPLATE.format(self.tgt_langs[index])
+                else:
+                    lang_tag = self.LANG_TAG_MBART_TEMPLATE.format(self.tgt_langs[index],
+                                                                    self.tgt_langs[index].upper())
+                    if lang_tag not in self.tgt_dict:
+                        lang_tag = lang_tag.split("_")[0] + "_XX]"
+
+                lang_tag_idx = self.tgt_dict.index(lang_tag)
+                target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
 
         return index, source, target
 

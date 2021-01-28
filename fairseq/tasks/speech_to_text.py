@@ -192,6 +192,11 @@ class SpeechToTextTask(LegacyFairseqTask):
                 'Please set "--prefix-size 1" since '
                 "target language ID token is prepended as BOS."
             )
+        if not self.data_cfg.prepend_tgt_lang_tag and args.prefix_size == 1:
+            raise ValueError(
+                'Please remove "--prefix-size 1" since '
+                "there is no language ID token is preprended."
+            )
         lang_token_ids = {
             i
             for s, i in self.tgt_dict.indices.items()

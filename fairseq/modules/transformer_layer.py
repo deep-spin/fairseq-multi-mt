@@ -41,8 +41,15 @@ class TransformerEncoderLayer(nn.Module):
 
         adapter_keys = getattr(args, 'adapter_keys', None)
         self.adapter_dim = int(getattr(args, 'adapter_enc_dim', 0))
+        self.adapter_heads = int(getattr(args, 'adapter_dec_heads', 0))
         self.adapter_shared = getattr(args, 'adapter_enc_type', None) == 'shared'
         self.adapter_keys = adapter_keys if self.adapter_dim > 0 else None
+        self.adapter_mode = getattr(args, 'adapter_dec_mode', "serial")
+        self.adapter_parallel_to = getattr(args, 'adapter_dec_parallel_to', "layer")
+        self.adapter_parallel_weight = getattr(args, 'adapter_dec_parallel_weight', 1.0)
+        self.adapter_parallel_learnable = getattr(args, 'adapter_dec_parallel_learnable', False)
+        if self.adapter_parallel_learnable:
+            self.adapter_parallel_weight = nn.Parameter(torch.tensor(self.adapter_parallel_weight))
 
         self.self_attn = self.build_self_attention(self.embed_dim, args)
         self.self_attn_layer_norm = LayerNorm(self.embed_dim)
@@ -76,7 +83,9 @@ class TransformerEncoderLayer(nn.Module):
             self.adapter_keys,
             self.adapter_dim,
             self.embed_dim,
-            self.adapter_shared
+            self.adapter_mode,
+            self.adapter_heads,
+            self.adapter_shared,
         )
 
         self.final_layer_norm = LayerNorm(self.embed_dim)
@@ -101,16 +110,25 @@ class TransformerEncoderLayer(nn.Module):
             qn_block_size=self.quant_noise_block_size,
         )
 
-    def build_adapters(self, adapter_keys, adapter_dim, input_dim, shared=False):
+    def build_adapters(self, adapter_keys, adapter_dim, input_dim, 
+                        adapter_mode="serial", adapter_heads=0, shared=False):
         if not adapter_keys:
             return None
         
-        if shared:
-            adapter = Adapter(input_dim, adapter_dim)
-            return nn.ModuleDict({k: adapter for k in adapter_keys})
-
-        return nn.ModuleDict({k: Adapter(input_dim, adapter_dim)
-                                    for k in adapter_keys})
+        if adapter_mode == "serial":
+            if shared:
+                adapter = Adapter(input_dim, adapter_dim)
+                return nn.ModuleDict({k: adapter for k in adapter_keys})
+            return nn.ModuleDict({k: Adapter(input_dim, adapter_dim)
+                                        for k in adapter_keys})
+        elif adapter_mode == "parallel":
+            if shared:
+                adapter = AdapterMHA(input_dim, adapter_dim, adapter_heads)
+                return nn.ModuleDict({k: adapter for k in adapter_keys})
+            return nn.ModuleDict({k: AdapterMHA(input_dim, adapter_dim, adapter_heads)
+                                        for k in adapter_keys})
+        else:
+            raise NotImplementedError
 
     def residual_connection(self, x, residual):
         return residual + x
@@ -151,6 +169,7 @@ class TransformerEncoderLayer(nn.Module):
         # Note that we cannot use -inf here, because at some edge cases,
         # the attention weight (before softmax) for some padded element in query
         # will become -inf, which results in NaN in model parameters
+        use_adapter = self.adapters and adapter_key
         if attn_mask is not None:
             attn_mask = attn_mask.masked_fill(attn_mask.to(torch.bool), -1e8)
 
@@ -165,6 +184,15 @@ class TransformerEncoderLayer(nn.Module):
             need_weights=False,
             attn_mask=attn_mask,
         )
+        if use_adapter and self.adapter_mode == "parallel":
+            z = self.adapters[adapter_key](residual, 
+                                           key_padding_mask=encoder_padding_mask,
+                                           attn_mask=attn_mask)
+            if self.adapter_parallel_to == "self_attn":
+                # logging.info(f'before parallel adapters: {torch.norm(x.flatten())}')
+                x = x + self.adapter_parallel_weight * z
+                # logging.info(f'after parallel adapters: {torch.norm(x.flatten())}')
+                # logging.info(f'adapter_parallel_weight: {self.adapter_parallel_weight}')
         x = self.dropout_module(x)
         x = self.residual_connection(x, residual)
         if not self.normalize_before:
@@ -177,7 +205,8 @@ class TransformerEncoderLayer(nn.Module):
         x = self.activation_dropout_module(x)
         x = self.fc2(x)
         x = self.dropout_module(x)
-        if self.adapters and adapter_key:
+        if use_adapter and self.adapter_mode == "serial":
+            # logging.info(f'before forward to adapter {adapter_key} in enc: {torch.norm(x.view(-1))}')
             x = self.adapters[adapter_key](x, x)[0]
         x = self.residual_connection(x, residual)
         if not self.normalize_before:
@@ -240,7 +269,7 @@ class TransformerDecoderLayer(nn.Module):
             self.embed_dim,
             self.adapter_mode,
             self.adapter_heads,
-            self.adapter_shared
+            self.adapter_shared,
         )
         self.activation_fn = utils.get_activation_fn(
             activation=str(args.activation_fn)
