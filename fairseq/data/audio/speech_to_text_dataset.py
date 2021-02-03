@@ -277,9 +277,14 @@ class SpeechToTextDataset(FairseqDataset):
                 tgt_lang_tags = [
                 self.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(self.tgt_langs)
             ]
+                special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
                 for i, t in enumerate(tgt_lang_tags):
                     if t not in self.tgt_dict:
-                        tgt_lang_tags[i] = t.split("_")[0] + "_XX]"
+                        lang_tmp = t.split("_")[0].replace('[','')
+                        if lang_tmp in special_symbols:
+                            tgt_lang_tags[i] = special_symbols[lang_tmp]
+                        else:
+                            tgt_lang_tags[i] = lang_tmp + "_XX]"
             logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
             assert all(t in self.tgt_dict for t in tgt_lang_tags)     
 
@@ -313,8 +318,13 @@ class SpeechToTextDataset(FairseqDataset):
                 else:
                     lang_tag = self.LANG_TAG_MBART_TEMPLATE.format(self.tgt_langs[index],
                                                                 self.tgt_langs[index].upper())
+                    special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
                     if lang_tag not in self.tgt_dict:
-                        lang_tag = lang_tag.split("_")[0] + "_XX]"
+                        lang_tmp = lang_tag.split("_")[0].replace('[','')
+                        if lang_tmp in special_symbols:
+                            lang_tag = special_symbols[lang_tmp]
+                        else:
+                            lang_tag = lang_tmp + "_XX]"
                 lang_tag_idx = self.tgt_dict.index(lang_tag)
                 target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
         
@@ -330,8 +340,13 @@ class SpeechToTextDataset(FairseqDataset):
                 else:
                     lang_tag = self.LANG_TAG_MBART_TEMPLATE.format(self.tgt_langs[index],
                                                                     self.tgt_langs[index].upper())
+                    special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
                     if lang_tag not in self.tgt_dict:
-                        lang_tag = lang_tag.split("_")[0] + "_XX]"
+                        lang_tmp = lang_tag.split("_")[0].replace('[','')
+                        if lang_tmp in special_symbols:
+                            lang_tag = special_symbols[lang_tmp]
+                        else:
+                            lang_tag = lang_tmp + "_XX]"
 
                 lang_tag_idx = self.tgt_dict.index(lang_tag)
                 target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)

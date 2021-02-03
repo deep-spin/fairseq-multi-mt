@@ -69,7 +69,7 @@ class SpeechToTextTask(LegacyFairseqTask):
                             choices=[None, 'serial', 'parallel'], default="serial",
                             help='Mode of adapters in decoders (None means not used).')
         parser.add_argument('--adapter-dec-parallel-to', type=str,
-                            choices=[None, 'self_attn', 'layer'], default="layer",
+                            choices=[None, 'self_attn', 'layer', 'cross_attn'], default="layer",
                             help='position of parallel adapters (parallel to which block).')
         parser.add_argument('--adapter-dec-parallel-weight', type=float, default=1.0,
                             help='Weight to combine parallel adapters to the main branch')
@@ -106,9 +106,17 @@ class SpeechToTextTask(LegacyFairseqTask):
             tgt_lang_tags = [
             SpeechToTextDataset.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(tgt_langs)
         ]
+            logging.info(f'tgt_lang_tags: {tgt_lang_tags}')
+            special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
             for i, t in enumerate(tgt_lang_tags):
+                lang_tmp = t.split("_")[0].replace('[','')
+                logging.info(f'lang_tmp: {lang_tmp}')
                 if t not in tgt_dict:
-                    tgt_lang_tags[i] = t.split("_")[0] + "_XX]"
+                    if lang_tmp in special_symbols:
+                        logging.info(f'lang_tmp: {special_symbols[lang_tmp]}')
+                        tgt_lang_tags[i] = special_symbols[lang_tmp]
+                    else:
+                        tgt_lang_tags[i] = lang_tmp + "_XX]"
         assert len(tgt_lang_tags) >= 1
         adapter_keys = []
         for t in tgt_lang_tags:
