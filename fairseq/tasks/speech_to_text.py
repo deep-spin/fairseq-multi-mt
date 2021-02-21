@@ -116,7 +116,7 @@ class SpeechToTextTask(LegacyFairseqTask):
                         logging.info(f'lang_tmp: {special_symbols[lang_tmp]}')
                         tgt_lang_tags[i] = special_symbols[lang_tmp]
                     else:
-                        tgt_lang_tags[i] = lang_tmp + "_XX]"
+                        tgt_lang_tags[i] = "[" + lang_tmp + "_XX]"
         assert len(tgt_lang_tags) >= 1
         adapter_keys = []
         for t in tgt_lang_tags:

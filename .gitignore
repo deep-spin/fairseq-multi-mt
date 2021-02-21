@@ -144,7 +144,14 @@ wandb/
 
 # notes and slurm scripts
 *_*.md
+<<<<<<< HEAD
 _slurm/*
 _configs/*
 _tools/*
 >>>>>>> 1a695f83 (add loading ckpts from mBART to s2t_transformer)
+=======
+_slurm*
+_configs*
+_tools*
+_lig*
+>>>>>>> 23eacd96 (Update .gitignore and fix small bugs)

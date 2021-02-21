@@ -284,7 +284,7 @@ class SpeechToTextDataset(FairseqDataset):
                         if lang_tmp in special_symbols:
                             tgt_lang_tags[i] = special_symbols[lang_tmp]
                         else:
-                            tgt_lang_tags[i] = lang_tmp + "_XX]"
+                            tgt_lang_tags[i] = "[" + lang_tmp + "_XX]"
             logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
             assert all(t in self.tgt_dict for t in tgt_lang_tags)     
 
@@ -324,7 +324,7 @@ class SpeechToTextDataset(FairseqDataset):
                         if lang_tmp in special_symbols:
                             lang_tag = special_symbols[lang_tmp]
                         else:
-                            lang_tag = lang_tmp + "_XX]"
+                            lang_tag = "[" + lang_tmp + "_XX]"
                 lang_tag_idx = self.tgt_dict.index(lang_tag)
                 target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
         
@@ -346,7 +346,7 @@ class SpeechToTextDataset(FairseqDataset):
                         if lang_tmp in special_symbols:
                             lang_tag = special_symbols[lang_tmp]
                         else:
-                            lang_tag = lang_tmp + "_XX]"
+                            lang_tag = "[" + lang_tmp + "_XX]"
 
                 lang_tag_idx = self.tgt_dict.index(lang_tag)
                 target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
