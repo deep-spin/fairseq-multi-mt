@@ -233,6 +233,17 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
             default=None,
             help="If not None then freeze all modules except for the specified ones",
         )
+        parser.add_argument(
+            "--use-length-adapter",
+            action="store_true",
+            help="Use length adapter after the encoder",
+        )
+        parser.add_argument(
+            "--conv-kernel-sizes-adapter",
+            type=str,
+            metavar="N",
+            help="kernel sizes of Conv1d subsampling layers",
+        )
 
     @classmethod
     def build_encoder(cls, args):
@@ -244,9 +255,10 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
                     f"skipped pretraining because {pretraining_path} does not exist"
                 )
             else:
-                strict = not bool(args.adapter_keys)
+                strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False)
                 if not strict:
                     logging.warning(f'strict mode when loading encoder: {strict}')
+
                 encoder = checkpoint_utils.load_pretrained_component_from_model(
                     component=encoder, checkpoint=pretraining_path,
                     strict=strict
