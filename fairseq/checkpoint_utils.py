@@ -767,15 +767,7 @@ def load_pretrained_component_from_model(
             # encoder.input_layers.0.0.weight --> input_layers.0.0.weight
             component_subkey = key[len(component_type) + 1 :]
             component_state_dict[component_subkey] = state["model"][key]
-    component_before = copy.deepcopy(component)
-    component_before_keys = [k for k, _ in component_before.state_dict().items()]
     component.load_state_dict(component_state_dict, strict=strict)
-    for n, p in component.state_dict().items():
-        if n in component_before_keys:
-            logging.info(f'*** {n}: before {torch.norm(component_before.state_dict()[n].view(-1))}')
-            logging.info(f'*** {n}: after {torch.norm(component.state_dict()[n].view(-1))}')
-        else:
-            logging.warning(f'*** {n} not loaded!')
     return component
 
 
