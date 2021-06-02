@@ -180,6 +180,16 @@ class TransformerLanguageModelConfig(FairseqDataclass):
             )
         }
     )
+    # config for "BASE Layers: Simplifying Training of Large, Sparse Models"
+    base_layers: Optional[int] = field(
+        default=0, metadata={"help": "number of BASE layers in total"}
+    )
+    base_sublayers: Optional[int] = field(
+        default=1, metadata={"help": "number of sublayers in each BASE layer"}
+    )
+    base_shuffle: Optional[int] = field(
+        default=1, metadata={"help": "shuffle tokens between workers before computing assignment"}
+    )
     # options from other parts of the config
     add_bos_token: bool = II("task.add_bos_token")
     tokens_per_sample: int = II("task.tokens_per_sample")
@@ -229,9 +239,6 @@ class TransformerLanguageModel(FairseqLanguageModel):
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""
-
-        # make sure all arguments are present in older models
-        base_lm_architecture(args)
 
         if args.decoder_layers_to_keep:
             args.decoder_layers = len(args.decoder_layers_to_keep.split(","))
@@ -307,7 +314,7 @@ def base_lm_architecture(args):
     args.adaptive_softmax_cutoff = getattr(args, "adaptive_softmax_cutoff", None)
     args.adaptive_softmax_dropout = getattr(args, "adaptive_softmax_dropout", 0)
     args.adaptive_softmax_factor = getattr(args, "adaptive_softmax_factor", 4)
-    args.decoder_learned_pos = getattr(args, "decoder_learned_pos", True)
+    args.decoder_learned_pos = getattr(args, "decoder_learned_pos", False)
     args.activation_fn = getattr(args, "activation_fn", "relu")
 
     args.decoder_layerdrop = getattr(args, "decoder_layerdrop", 0)
@@ -315,6 +322,10 @@ def base_lm_architecture(args):
     args.quant_noise_pq = getattr(args, "quant_noise_pq", 0)
     args.quant_noise_pq_block_size = getattr(args, "quant_noise_pq_block_size", 8)
     args.quant_noise_scalar = getattr(args, "quant_noise_scalar", 0)
+
+    args.base_layers = getattr(args, "base_layers", 0)
+    args.base_sublayers = getattr(args, "base_sublayers", 1)
+    args.base_shuffle = getattr(args, "base_shuffle", False)
 
     args.add_bos_token = getattr(args, "add_bos_token", False)
     args.no_token_positional_embeddings = getattr(
@@ -449,11 +460,15 @@ def transformer_lm_gpt2_big(args):
 
 
 def base_gpt3_architecture(args):
+    args.decoder_input_dim = args.decoder_embed_dim
+    args.decoder_output_dim = args.decoder_embed_dim
     args.decoder_ffn_embed_dim = getattr(args, "decoder_ffn_embed_dim", args.decoder_embed_dim * 4)
+    # GPT-3 used learned positional embeddings, rather than sinusoidal
     args.decoder_learned_pos = getattr(args, "decoder_learned_pos", True)
     args.dropout = getattr(args, "dropout", 0.0)
     args.attention_dropout = getattr(args, "attention_dropout", 0.0)
     args.activation_fn = getattr(args, "activation_fn", "gelu")
+    args.share_decoder_input_output_embed = True
     base_lm_architecture(args)
 
 
@@ -489,7 +504,7 @@ def transformer_lm_gpt3_xl(args):
     # 1.3B params
     args.decoder_layers = getattr(args, "decoder_layers", 24)
     args.decoder_embed_dim = getattr(args, "decoder_embed_dim", 2048)
-    args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 24)
+    args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 32)
     base_gpt3_architecture(args)
 
 

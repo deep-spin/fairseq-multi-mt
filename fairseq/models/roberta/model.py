@@ -204,7 +204,7 @@ class RobertaModel(FairseqEncoderModel):
         features_only=False,
         return_all_hiddens=False,
         classification_head_name=None,
-        **kwargs
+        **kwargs,
     ):
         if classification_head_name is not None:
             features_only = True
@@ -259,7 +259,7 @@ class RobertaModel(FairseqEncoderModel):
         checkpoint_file="model.pt",
         data_name_or_path=".",
         bpe="gpt2",
-        **kwargs
+        **kwargs,
     ):
         from fairseq import hub_utils
 
@@ -458,16 +458,13 @@ class RobertaEncoder(FairseqEncoder):
     def build_lm_head(self, embed_dim, output_dim, activation_fn, weight):
         return RobertaLMHead(embed_dim, output_dim, activation_fn, weight)
 
-    def build_lm_head(self, embed_dim, output_dim, activation_fn, weight):
-        return RobertaLMHead(embed_dim, output_dim, activation_fn, weight)
-
     def forward(
         self,
         src_tokens,
         features_only=False,
         return_all_hiddens=False,
         masked_tokens=None,
-        **unused
+        **unused,
     ):
         """
         Args:
