@@ -102,9 +102,8 @@ done
 <table>
     <thead>
       <tr>
-        <th></th>
         <th>Model</th>
-        <th><td rowspan=2>Params (trainable/total)</th>
+        <th>Params (trainable/total)</th>
         <th>en-de</th>
         <th>en-es</th>
         <th>en-fr</th>
