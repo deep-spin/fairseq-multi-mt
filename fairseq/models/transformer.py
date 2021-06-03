@@ -886,13 +886,12 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 - a dictionary with any model-specific outputs
         """
         bs, slen = prev_output_tokens.size()
-        # logging.info(f'prev_output_tokens: {prev_output_tokens}')
+
         adapter_key = None
         if getattr(self.args, "adapter_keys", None) is not None: # backward compatibility
             if len(self.args.adapter_keys) == 1:
                 adapter_key = self.args.adapter_keys[0]
             elif len(self.args.adapter_keys) > 1 and prev_output_tokens[:, 1:2].shape[1] != 0:
-                # assert len(set(prev_output_tokens[:, 1:2].view(-1).tolist())) == 1
                 adapter_key = str(prev_output_tokens[:, 1:2][0].item())
 
         if alignment_layer is None:

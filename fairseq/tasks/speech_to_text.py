@@ -47,7 +47,9 @@ class SpeechToTextTask(LegacyFairseqTask):
         )
         parser.add_argument(
             '--lang-pairs',
+            default=None,
             metavar='STR',
+            type=str,
             help='comma-separated list of language pairs: en-de,en-fr,de-fr'
         )
         # args for "Adapters for Multilingual Speech Translation"
@@ -96,43 +98,46 @@ class SpeechToTextTask(LegacyFairseqTask):
             raise FileNotFoundError(f"Dict not found: {dict_path}")
         tgt_dict = Dictionary.load(dict_path)
 
-        # Add adapter keys
-        tgt_langs = sorted([s.split('-')[-1] for s in args.lang_pairs.split(',')])
-        if not args.use_mbart: 
-            tgt_lang_tags = [
-                SpeechToTextDataset.LANG_TAG_TEMPLATE.format(t) for t in set(tgt_langs)
-            ]
-        else:
-            tgt_lang_tags = [
-            SpeechToTextDataset.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(tgt_langs)
-        ]
-            logging.info(f'tgt_lang_tags: {tgt_lang_tags}')
-            special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
-            for i, t in enumerate(tgt_lang_tags):
-                lang_tmp = t.split("_")[0].replace('[','')
-                logging.info(f'lang_tmp: {lang_tmp}')
-                if t not in tgt_dict:
-                    if lang_tmp in special_symbols:
-                        logging.info(f'lang_tmp: {special_symbols[lang_tmp]}')
-                        tgt_lang_tags[i] = special_symbols[lang_tmp]
-                    else:
-                        tgt_lang_tags[i] = "[" + lang_tmp + "_XX]"
-        assert len(tgt_lang_tags) >= 1
+        tgt_langs = None
         adapter_keys = []
-        for t in tgt_lang_tags:
-            idx = tgt_dict.index(t)
-            logging.info(f'| {t}: {idx}')
-            if args.adapter_dec_type == 'per_lang': # use multilingual dict
-                assert idx != tgt_dict.unk_index
-                adapter_keys.append(str(idx))
-            elif args.adapter_dec_type == 'shared': # use bilingual dict
-                adapter_keys.append(tgt_lang_tags[0])
+        # Add adapter keys
+        if args.lang_pairs is not None:
+            tgt_langs = sorted([s.split('-')[-1] for s in args.lang_pairs.split(',')])
+            if not args.use_mbart: 
+                tgt_lang_tags = [
+                    SpeechToTextDataset.LANG_TAG_TEMPLATE.format(t) for t in set(tgt_langs)
+                ]
+            else:
+                tgt_lang_tags = [
+                SpeechToTextDataset.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(tgt_langs)
+            ]
+                logging.info(f'tgt_lang_tags: {tgt_lang_tags}')
+                special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
+                for i, t in enumerate(tgt_lang_tags):
+                    lang_tmp = t.split("_")[0].replace('[','')
+                    logging.info(f'lang_tmp: {lang_tmp}')
+                    if t not in tgt_dict:
+                        if lang_tmp in special_symbols:
+                            logging.info(f'lang_tmp: {special_symbols[lang_tmp]}')
+                            tgt_lang_tags[i] = special_symbols[lang_tmp]
+                        else:
+                            tgt_lang_tags[i] = "[" + lang_tmp + "_XX]"
+            assert len(tgt_lang_tags) >= 1
+            
+            for t in tgt_lang_tags:
+                idx = tgt_dict.index(t)
+                logging.info(f'{t}: {idx}')
+                if args.adapter_dec_type == 'per_lang': # use multilingual dict
+                    assert idx != tgt_dict.unk_index
+                    adapter_keys.append(str(idx))
+                elif args.adapter_dec_type == 'shared': # use bilingual dict
+                    adapter_keys.append(tgt_lang_tags[0])
 
-        args.adapter_keys = adapter_keys
-        if args.adapter_keys and len(tgt_lang_tags) > 1:
-            assert args.homogeneous_batch
-        logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
-        logging.info(f'| adapter_keys: {args.adapter_keys}')
+            args.adapter_keys = adapter_keys
+            if args.adapter_keys and len(tgt_lang_tags) > 1:
+                assert args.homogeneous_batch
+            logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
+            logging.info(f'| adapter_keys: {args.adapter_keys}')
 
         logger.info(
             f"dictionary size ({data_cfg.vocab_filename}): " f"{len(tgt_dict):,}"

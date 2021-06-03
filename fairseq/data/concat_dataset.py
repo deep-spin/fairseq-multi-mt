@@ -151,11 +151,9 @@ class ConcatDataset(FairseqDataset):
     ):
         start_idx = 0
         batch_samplers = [None]*len(self.datasets)
-        num_samples= [len(s) for s in self.datasets]
-        # logging.info(f'Number of samples per datasets: {num_samples}')
+        # num_samples = [len(s) for s in self.datasets]
+
         for i, d in enumerate(self.datasets):
-            # logging.info(f'dataset {i}: start_idx: {start_idx}')
-            # logging.info(f'dataset {i} indices: {indices[start_idx:start_idx+len(d)]}')
             batch_samplers[i] = super().batch_by_size(
                         indices=indices[start_idx : start_idx+len(d)],
                         max_tokens=max_tokens,
@@ -175,8 +173,7 @@ class ConcatDataset(FairseqDataset):
         # iterators = [iter(s) for s in batch_samplers]
         iterators = list(map(iter, batch_samplers))
         # num_batches = [len(s) for s in batch_samplers]
-        # logging.info(f'Number of iterators: {len(iterators)}')
-        # logging.info(f'Number of batches per datasets: {num_batches}')
+
         while iterators:  
             for i, iterator in enumerate(iterators):
                 try:

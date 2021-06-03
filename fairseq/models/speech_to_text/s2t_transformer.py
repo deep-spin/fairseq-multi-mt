@@ -207,6 +207,8 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
             type=int,
             metavar='N',
             help='freeze encoder for first N updates'
+        )
+        parser.add_argument(
             "--load-pretrained-decoder-from",
             type=str,
             metavar="STR",
@@ -334,14 +336,12 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
 
         def _freeze(module):
             for n, p in module.named_parameters():
-                logging.info(f'- freezing {n}')
                 p.requires_grad = False
         def _unfreeze(module, finetune_modules=None):
             if finetune_modules:
                 for n, p in module.named_parameters():
                     for m in finetune_modules:
                         if m in n:
-                            logging.info(f'- unfreezing {n}')
                             p.requires_grad = True
         
         # Freeze modules if specified
@@ -358,10 +358,10 @@ class S2TTransformerModel(FairseqEncoderDecoderModel):
             if finetune_dec_modules:
                 finetune_dec_modules = finetune_dec_modules.split(',') \
                     if not isinstance(finetune_dec_modules, list) else finetune_dec_modules
-            logging.info("*** RESET ENCODER ***")
+            logging.info("Freeze/Un-freeze encoder...")
             _freeze(encoder)
             _unfreeze(encoder, finetune_enc_modules)
-            logging.info("*** RESET DECODER ***")
+            logging.info("Freeze/Un-freeze decoder...")
             _freeze(decoder) 
             _unfreeze(decoder, finetune_dec_modules)
 

@@ -1,4 +1,5 @@
 # Original code from adapter-transformers
+# https://github.com/Adapter-Hub/adapter-transformers
 
 """Adapter modules."""
 import math
@@ -68,8 +69,6 @@ class Adapter(nn.Module):
 
         # If we want to have a layer norm on input, we add it to seq_list
         if self.add_layer_norm_before:
-            # self.adapter_norm_before = nn.LayerNorm(self.input_size)
-            # seq_list.append(self.adapter_norm_before)
             seq_list.append(nn.LayerNorm(self.input_size))
 
         # if a downsample size is not passed, we just half the size of the original input
@@ -81,11 +80,6 @@ class Adapter(nn.Module):
         seq_list.append(nn.Linear(self.input_size, self.down_sample))
 
         # select non-linearity
-        # TODO give more options than just relu, or pass the non_linearity directly, not as a string
-        # if non_linearity.lower() == 'relu':
-        #     self.non_linearity = nn.ReLU()
-        # self.non_linearity = Activation_Function_Class(non_linearity.lower())
-        # seq_list.append(self.non_linearity)
         seq_list.append(Activation_Function_Class(non_linearity.lower()))
 
         # sequential adapter, first downproject, then non-linearity then upsample. In the forward pass we include the
