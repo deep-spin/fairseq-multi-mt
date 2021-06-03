@@ -26,8 +26,8 @@ where:
 - `${MULTILINGUAL_BACKBONE}` is the path to save the outputs of the experiments.
 - `${PRETRAINED_ASR}` is the path to the pretrained ASR model used to initialize the ST encoder.
 
-### Adapter-based finetuning
-To perform multilingual finetuning using adapters, please run the following command:
+### Adapter-based fine-tuning
+To perform multilingual fine-tuning using adapters, please run the following command:
 ```bash
 fairseq-train ${MUSTC_ROOT} \
   --config-yaml config_st.yaml \
@@ -50,8 +50,8 @@ fairseq-train ${MUSTC_ROOT} \
   --load-pretrained-decoder-from ${MULTILINGUAL_BACKBONE}/${CHECKPOINT_FILENAME}
 ```
 
-### Full/Partial finetuning
-For full finetuning on a specific language pair, for example, `en-de`:
+### Full/Partial fine-tuning
+For full fine-tuning on a specific language pair, for example, `en-de`:
 ```bash
 fairseq-train ${MUSTC_ROOT} \
   --config-yaml config_st.yaml \
@@ -64,7 +64,7 @@ fairseq-train ${MUSTC_ROOT} \
   --finetune-from-model ${MULTILINGUAL_BACKBONE}/${CHECKPOINT_FILENAME}
 ```
 
-For decoder-only finetuning:
+For decoder-only fine-tuning:
 ```bash
 fairseq-train ${MUSTC_ROOT} \
   --config-yaml config_st.yaml \
@@ -98,8 +98,58 @@ done
 ```
 
 # Results
-| Model  | Params (M) (trainable/total) | En-De | En-Es | En-Fr | En-It | En-Nl | En-Pt | En-Ro | En-Ru |
-|---|---|---|---|---|---|---|---|---|---|
-| Multilingual baseline | 76.3/76.3 | 24.18 | 28.28 | **34.98** | 24.62 | **28.80** | **31.13** | 23.22 | 15.88 |
-| Best adapting | 8 x 4.8/76.3 | **24.63** | **28.73** | 34.75 | **24.96** | **28.80** | 30.96 | 23.70 | **16.36** |
-| Best finetuning | 8 x 35.5/8 x 76.3 | 24.50 | 28.67 | 34.89 | 24.82 | 28.38 | 30.73 | **23.78** | 16.23 |
+
+<table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Model</th>
+        <th><td rowspan=2>Params (trainable/total)</th>
+        <th>en-de</th>
+        <th>en-es</th>
+        <th>en-fr</th>
+        <th>en-it</th>
+        <th>en-nl</th>
+        <th>en-pt</th>
+        <th>en-ro</th>
+        <th>en-ru</th>
+      </tr>
+      <tbody>
+        <tr>
+            <td>Multilingual baseline</td>
+            <td>76.3/76.3</td>
+            <td>24.18</td>
+            <td>28.28</td>
+            <td><b>34.98</td>
+            <td>24.62</td>
+            <td><b>28.80</td>
+            <td>31.13</td>
+            <td>23.22</td>
+            <td>15.88</td>
+       </tr>
+       <tr>
+            <td>Best adapting</td>
+            <td>8 x 4.8/76.3</td>
+            <td><b>24.63</td>
+            <td><b>28.73</td>
+            <td>34.75</td>
+            <td><b>24.96</td>
+            <td><b>28.80</td>
+            <td>30.96</td>
+            <td>23.70</td>
+            <td>16.36</td>
+       </tr>
+       <tr>
+            <td>Best fine-tuning</td>
+            <td>8 x 4.8/76.3</td>
+            <td>24.50</td>
+            <td>28.67</td>
+            <td>34.89</td>
+            <td>24.82</td>
+            <td>28.38</td>
+            <td>30.73</td>
+            <td>23.78</td>
+            <td>16.23</td>
+       </tr>
+  </tbody>
+</table>
