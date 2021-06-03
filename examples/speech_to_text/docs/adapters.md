@@ -103,7 +103,7 @@ done
     <thead>
       <tr>
         <th>Model</th>
-        <th>Params (trainable/total)</th>
+        <th>Params <br> (trainable/total)</th>
         <th>en-de</th>
         <th>en-es</th>
         <th>en-fr</th>
