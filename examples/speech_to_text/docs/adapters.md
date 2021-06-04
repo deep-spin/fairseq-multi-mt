@@ -97,7 +97,8 @@ for LANG in de nl es fr it pt ro ru; do
 done
 ```
 
-# Results
+## Results
+The table below shows the performance on the MuST-C test set. 
 
 <table>
     <thead>
@@ -152,3 +153,16 @@ done
        </tr>
   </tbody>
 </table>
+
+## Citation
+Please cite as:
+
+```
+@inproceedings{le2021,
+  author    = {Le, Hang and Pino, Juan and Wang, Changhan and Gu, Jiatao and Schwab, Didier and Besacier, Laurent},
+  title     = {Lightweight Adapter Tuning for Multilingual Speech Translation},
+  booktitle = {{ACL}},
+  publisher = {Association for Computational Linguistics},
+  year      = {2021}
+}
+```
