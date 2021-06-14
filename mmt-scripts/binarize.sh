@@ -1,6 +1,6 @@
 LANGUAGES=$1
 MODEL_PATH=/home/bpop/flores101_mm100_175M/
-DICT=MODEL_PATH/dict.txt
+DICT=$MODEL_PATH/dict.txt
 FLORES_PATH=/home/bpop/flores101_dataset/
 FAIRSEQ_PATH=..
 
