@@ -10,9 +10,7 @@
 
 --------------------------------------------------------------------------------
 
-Fairseq(-py) is a sequence modeling toolkit that allows researchers and
-developers to train custom models for translation, summarization, language
-modeling and other text generation tasks.
+This is a fork of fairseq for DeepSPIN's submission to the (Large Scale Multilingual Machine Translation shared task)(http://www.statmt.org/wmt21/large-scale-multilingual-translation-task.html) at WMT 2021.
 
 We provide reference implementations of various sequence modeling papers:
 
