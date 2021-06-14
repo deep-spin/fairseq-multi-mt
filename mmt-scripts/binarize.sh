@@ -1,5 +1,6 @@
 LANGUAGES=$1
-DICT=flores101_mm100_175M/dict.txt  # fix
+MODEL_PATH=/home/bpop/flores101_mm100_175M/
+DICT=MODEL_PATH/dict.txt
 FLORES_PATH=/home/bpop/flores101_dataset/
 FAIRSEQ_PATH=..
 
@@ -12,7 +13,11 @@ for SPLIT in dev devtest ; do
     for LANGUAGE in $( cat $LANGUAGES ) ; do
         inp=$FLORES_PATH/$SPLIT/$LANGUAGE.$SPLIT
         outp=$FAIRSEQ_PATH/data/spm.$SPLIT.$LANGUAGE
-        spm_encode --model=../sentencepiece.bpe.model --output_format=piece < $inp > $outp
+        echo "encoding"
+        echo $inp
+        echo $outp
+        spm_encode --model=$MODEL_PATH/sentencepiece.bpe.model --output_format=piece < $inp > $outp
+        echo $LANGUAGE
     done
 done
 
