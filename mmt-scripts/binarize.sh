@@ -4,6 +4,7 @@ DICT=MODEL_PATH/dict.txt
 FLORES_PATH=/home/bpop/flores101_dataset/
 FAIRSEQ_PATH=..
 
+mkdir -p ../data
 mkdir -p ../data-bin
 
 # this part should probably be done by a different script
