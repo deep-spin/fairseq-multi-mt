@@ -23,9 +23,9 @@ def parse_results(lines):
 
 
 def print_results(results, languages):
-    for src_lang in languages:
+    for s in languages:
         # print a line for each
-        trg_bleus = [results[t] if t != src_lang else "-" for t in languages]
+        trg_bleus = [results[s][t] if t != s else "-" for t in languages]
         print(" & ".join(trg_bleus))
 
 
