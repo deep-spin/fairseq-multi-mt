@@ -16,7 +16,6 @@ srp
 ind
 jav
 msa
-snd
 tam
 tgl
 """.split()
@@ -31,7 +30,6 @@ sr
 id
 jv
 ms
-su
 ta
 tl
 """.split()
