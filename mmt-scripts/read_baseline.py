@@ -26,7 +26,7 @@ def print_results(results, languages):
     for s in languages:
         # print a line for each
         trg_bleus = [results[s][t] if t != s else "-" for t in languages]
-        print(" & ".join(trg_bleus))
+        print(" & ".join([s] + trg_bleus) + "\\")
 
 
 if __name__ == "__main__":
