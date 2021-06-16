@@ -4,6 +4,11 @@ import sys
 import re
 from collections import defaultdict
 
+
+def n_directions(n):
+    return n * (n - 1)
+
+
 def parse_results(lines):
 
     results = defaultdict(dict)
@@ -23,10 +28,15 @@ def parse_results(lines):
 
 
 def print_results(results, languages):
+    bleu_sum = 0.0
     for s in languages:
         # print a line for each
         trg_bleus = [results[s][t] if t != s else "-" for t in languages]
+        bleu_sum += sum(float(tb) if tb != "-" else 0.0 for tb in trg_bleus)
         print(" & ".join([s] + trg_bleus) + "\\\\")
+    # now get the mean
+    print(bleu_sum / n_directions(len(languages)))
+    print()
 
 
 if __name__ == "__main__":
