@@ -25,7 +25,7 @@ def parse_results(lines):
                 assert src is not None and trg is not None
                 # parse BLEU score
                 # bleu = re.search(r'(?<=BLEU4 = )[^,]*', line).group(0)
-                bleu = re.search(r'(?<=BLEU\+case\.mixed\+numrefs\.1\+smooth\.exp\+tok\.13a\+version\.1\.5\.0 = )([0-9]|\.)*', line).group(0)
+                bleu = re.search(r'(?<=BLEU\+case\.mixed\+numrefs\.1\+smooth\.exp\+tok\.spm\+version\.1\.5\.0 = )([0-9]|\.)*', line).group(0)
                 results[src][trg] = bleu
     return results
 
