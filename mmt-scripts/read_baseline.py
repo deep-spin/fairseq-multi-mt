@@ -3,6 +3,7 @@
 import sys
 import re
 from collections import defaultdict
+from os.path import basename
 
 
 def n_directions(n):
@@ -17,12 +18,14 @@ def parse_results(lines):
     for line in lines:
         line = line.strip()
         if line:
-            if not line.startswith("Generate"):
-                src, trg = line.split()
+            if not line.startswith("BLEU"):
+                src, trg = basename(line).split(".")[1].split("-")
+                # src, trg = line.split()
             else:
                 assert src is not None and trg is not None
                 # parse BLEU score
-                bleu = re.search(r'(?<=BLEU4 = )[^,]*', line).group(0)
+                # bleu = re.search(r'(?<=BLEU4 = )[^,]*', line).group(0)
+                bleu = re.search(r'(?<=BLEU\+case\.mixed\+numrefs\.1\+smooth\.exp\+tok\.13a\+version\.1\.5\.0 = )([0-9]|\.)*', line).group(0)
                 results[src][trg] = bleu
     return results
 
