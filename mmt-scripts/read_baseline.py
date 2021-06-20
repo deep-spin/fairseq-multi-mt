@@ -19,8 +19,7 @@ def parse_results(lines):
         line = line.strip()
         if line:
             if not line.startswith("BLEU"):
-                src, trg = basename(line).split(".")[1].split("-")
-                # src, trg = line.split()
+                src, trg = line.split()
             else:
                 assert src is not None and trg is not None
                 # parse BLEU score
