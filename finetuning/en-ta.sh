@@ -1,13 +1,14 @@
 #!/bin/bash
 
 MODEL_PATH=$1
+CHECKPOINT_PATH=$2
 
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
     data_bin \
     --finetune-from-model $MODEL_PATH/model.pt \
-    --save-dir /checkpoint \
+    --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
     --langs $( cat $MODEL_PATH/language_pairs.txt ) \
