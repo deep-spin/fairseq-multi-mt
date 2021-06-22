@@ -2,7 +2,7 @@
 MODEL_PATH=$1
 RESULTS_PATH=$2
 DICT=$MODEL_PATH/dict.txt
-FLORES_PATH=/home/bpop/flores_tasklangs/
+FLORES_PATH=/home/bpop/flores101_dataset/
 SCRIPTS_PATH=/home/bpop/fairseq-multi-mt/mmt-scripts/
 
 mkdir -p $RESULTS_PATH
