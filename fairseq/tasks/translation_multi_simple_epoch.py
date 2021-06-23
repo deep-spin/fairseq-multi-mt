@@ -73,6 +73,41 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         parser.add_argument('--keep-inference-langtok', action='store_true',
                             help='keep language tokens in inference output (e.g. for analysis or debugging)')
 
+        # args for "Adapters for Multilingual Speech Translation"
+        parser.add_argument('--subtask', metavar='STR', default="st",
+                            help='subtask', choices=["st", "asr", "joint_st_asr"])
+        parser.add_argument('--adapter-enc-dim', type=float, metavar='N',
+                            default=0.0, help='Adapter dimension in encoder.')
+        parser.add_argument('--adapter-enc-type', type=str,
+                            choices=[None, 'per_lang', 'shared'], default=None,
+                            help='Type of adapters in encoders (None means not used).')
+        parser.add_argument('--adapter-dec-dim', type=float, metavar='N',
+                            default=0.0, help='Adapter dimension in decoder.')
+        parser.add_argument('--adapter-dec-heads', type=float, metavar='N',
+                            default=0.0, help='Adapter heads in parallel adapter.')
+        parser.add_argument('--adapter-dec-type', type=str,
+                            choices=[None, 'per_lang', 'shared'], default=None,
+                            help='Type of adapters in encoders (None means not used).')
+        parser.add_argument('--adapter-dec-mode', type=str,
+                            choices=[None, 'serial', 'parallel'], default="serial",
+                            help='Mode of adapters in decoders (None means not used).')
+        parser.add_argument('--adapter-dec-parallel-to', type=str,
+                            choices=[None, 'self_attn', 'layer', 'cross_attn'], default="layer",
+                            help='position of parallel adapters (parallel to which block).')
+        parser.add_argument('--adapter-dec-parallel-weight', type=float, default=1.0,
+                            help='Weight to combine parallel adapters to the main branch')
+        parser.add_argument('--adapter-dec-parallel-learnable', action='store_true',
+                            help='Use learnable or fixed weight.')
+        '''
+        parser.add_argument('--homogeneous-batch', action='store_true',
+                            help='Use homogeneous batch in training and evaluation.')
+        parser.add_argument('--use-mbart', action='store_true',
+                            help='Use mbart initialization.')
+        parser.add_argument('--update-state-dict-mbart', action='store_true',
+                            help='Update mbart initialization for multihead-attention layer.')
+        '''
+        # end args for "Adapters for Multilingual Speech Translation"
+
         SamplingMethod.add_arguments(parser)
         MultilingualDatasetManager.add_args(parser)
         # fmt: on
@@ -127,6 +162,50 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         langs, dicts, training = MultilingualDatasetManager.prepare(
            cls.load_dictionary, args, **kwargs
         )
+
+        tgt_dict = dicts["tgt"]  # no idea if this is right
+
+        tgt_langs = None
+        adapter_keys = []
+        # Add adapter keys
+        if args.lang_pairs is not None:
+            # this part makes sense
+            tgt_langs = sorted([s.split('-')[-1] for s in args.lang_pairs.split(',')])
+
+            tgt_lang_tags = ["__{}__".format(t) for t in set(tgt_langs)]
+
+            assert len(tgt_lang_tags) >= 1
+
+            # why only tgts?
+            for t in tgt_lang_tags:
+                idx = tgt_dict.index(t)
+                logging.info(f'{t}: {idx}')
+                if args.adapter_dec_type == 'per_lang': # use multilingual dict
+                    assert idx != tgt_dict.unk_index
+                    adapter_keys.append(str(idx))
+                elif args.adapter_dec_type == 'shared': # use bilingual dict
+                    adapter_keys.append(tgt_lang_tags[0])
+
+            args.adapter_keys = adapter_keys
+            '''
+            if args.adapter_keys and len(tgt_lang_tags) > 1:
+                assert args.homogeneous_batch  # what is homogeneous batch for?
+            '''
+            logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
+            logging.info(f'| adapter_keys: {args.adapter_keys}')
+
+        '''
+        logger.info(
+            f"dictionary size ({data_cfg.vocab_filename}): " f"{len(tgt_dict):,}"
+        )
+        '''
+
+        '''
+        if getattr(args, "train_subset", None) is not None:
+            if not all(s.startswith("train") for s in args.train_subset.split(",")):
+                raise ValueError('Train splits should be named like "train*".')
+        '''
+
         return cls(args, langs, dicts, training)
 
     def has_sharded_data(self, split):
