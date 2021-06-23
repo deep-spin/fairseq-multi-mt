@@ -6,6 +6,7 @@
 import math
 import logging
 from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -210,6 +211,40 @@ class TransformerModel(FairseqEncoderDecoderModel):
                 '--offload-activations are passed.'
             )
         )
+
+        parser.add_argument(
+            "--load-pretrained-encoder-from",
+            type=str,
+            metavar="STR",
+            help="model to take encoder weights from (for initialization)",
+        )
+        parser.add_argument(
+            "--load-pretrained-decoder-from",
+            type=str,
+            metavar="STR",
+            help="model to take decoder weights from (for initialization)",
+        )
+        parser.add_argument(
+            "--finetune-modules",
+            type=str,
+            metavar="STR",
+            default=None,
+            help="If not None then freeze all modules except for the specified ones",
+        ) # for backward compatibility
+        parser.add_argument(
+            "--finetune-enc-modules",
+            type=str,
+            metavar="STR",
+            default=None,
+            help="If not None then freeze all modules except for the specified ones",
+        )
+        parser.add_argument(
+            "--finetune-dec-modules",
+            type=str,
+            metavar="STR",
+            default=None,
+            help="If not None then freeze all modules except for the specified ones",
+
         # fmt: on
 
     @classmethod
@@ -267,6 +302,40 @@ class TransformerModel(FairseqEncoderDecoderModel):
             # fsdp_wrap is a no-op when --ddp-backend != fully_sharded
             encoder = fsdp_wrap(encoder, min_num_params=min_params_to_wrap)
             decoder = fsdp_wrap(decoder, min_num_params=min_params_to_wrap)
+
+        def _freeze(module):
+            for n, p in module.named_parameters():
+                p.requires_grad = False
+        def _unfreeze(module, finetune_modules=None):
+            if finetune_modules:
+                for n, p in module.named_parameters():
+                    for m in finetune_modules:
+                        if m in n:
+                            p.requires_grad = True
+
+        # Freeze modules if specified
+        finetune_enc_modules = getattr(args, "finetune_enc_modules", None)
+        finetune_dec_modules = getattr(args, "finetune_dec_modules", None)
+        # For backward compatibility
+        '''
+        finetune_dec_modules = finetune_dec_modules \
+            if finetune_dec_modules else getattr(args, "finetune_modules", None)
+        '''
+
+        if finetune_enc_modules or finetune_dec_modules:
+            if finetune_enc_modules:
+                finetune_enc_modules = finetune_enc_modules.split(',') \
+                    if not isinstance(finetune_enc_modules, list) else finetune_enc_modules
+            if finetune_dec_modules:
+                finetune_dec_modules = finetune_dec_modules.split(',') \
+                    if not isinstance(finetune_dec_modules, list) else finetune_dec_modules
+            logging.info("Freeze/Un-freeze encoder...")  # could be described better
+            _freeze(encoder)
+            _unfreeze(encoder, finetune_enc_modules)
+            logging.info("Freeze/Un-freeze decoder...")
+            _freeze(decoder) 
+            _unfreeze(decoder, finetune_dec_modules)
+        
         return cls(args, encoder, decoder)
 
     @classmethod
@@ -283,16 +352,73 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
     @classmethod
     def build_encoder(cls, args, src_dict, embed_tokens):
-        return TransformerEncoder(args, src_dict, embed_tokens)
+        encoder = TransformerEncoder(args, src_dict, embed_tokens)
+
+        pretraining_path = getattr(args, "load_pretrained_encoder_from", None)
+        if pretraining_path is not None:
+            if not Path(pretraining_path).exists():
+                logger.warning(
+                    f"skipped pretraining because {pretraining_path} does not exist"
+                )
+            else:
+                strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False)
+                if not strict:
+                    logging.warning(f'strict mode when loading encoder: {strict}')
+
+                encoder = checkpoint_utils.load_pretrained_component_from_model(
+                    component=encoder, checkpoint=pretraining_path,
+                    strict=strict
+                )
+                logger.info(f"loaded pretrained encoder from: {pretraining_path}")
+        return encoder
 
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
-        return TransformerDecoder(
+        decoder = TransformerDecoder(
             args,
             tgt_dict,
             embed_tokens,
             no_encoder_attn=getattr(args, "no_cross_attention", False),
         )
+
+        if getattr(args, "load_pretrained_decoder_from", None):
+            if os.path.isfile(args.load_pretrained_decoder_from):
+                # Load the checkpoint and check for potential dimension mismatches
+                state_dict = checkpoint_utils.load_checkpoint_to_cpu(args.load_pretrained_decoder_from)
+
+                strict = True
+                # Check for dimension mismatches
+                ckpt_embed_dim = state_dict['model']['decoder.embed_tokens.weight'].shape[0]
+                embed_dim = decoder.embed_tokens.weight.shape[0]
+                if ckpt_embed_dim != embed_dim:
+                    logging.warning(f'Checkpoint embedding dim {ckpt_embed_dim} != {embed_dim}. Ignore this pretrained layer!')
+                    del state_dict['model']['decoder.embed_tokens.weight']
+                    strict = False
+                ckpt_output_dim = None
+                if 'decoder.output_projection.weight' in state_dict['model']:
+                    ckpt_output_dim = state_dict['model']['decoder.output_projection.weight'].shape[0]
+                output_dim = decoder.output_projection.weight.shape[0]
+                if ckpt_output_dim != output_dim:
+                    logging.warning(f'Checkpoint output dim {ckpt_output_dim} != {output_dim}. Ignore this pretrained layer!')
+                    if 'decoder.output_projection.weight' in state_dict['model']:
+                        del state_dict['model']['decoder.output_projection.weight']
+                    strict = False
+
+                args.use_mbart = False
+                strict = not bool(args.adapter_keys) and strict and not args.use_mbart
+                if not strict:
+                    logging.warning(f'| strict mode when loading decoder: {strict}')
+
+                decoder = checkpoint_utils.load_pretrained_component_from_model(
+                    component=decoder,
+                    checkpoint=state_dict,
+                    strict=strict
+                )
+                logger.info(
+                    f"loaded pretrained decoder from: "
+                    f"{args.load_pretrained_decoder_from}"
+                )
+        return decoder
 
     # TorchScript doesn't support optional arguments with variable length (**kwargs).
     # Current workaround is to add union of all arguments in child classes.
