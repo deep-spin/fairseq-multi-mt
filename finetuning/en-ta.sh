@@ -6,14 +6,14 @@ CHECKPOINT_PATH=$2
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
-    data_bin \
-    --finetune-from-model $MODEL_PATH/model.pt \
+    /home/bpop/en-ta-sanity-bin \
+    --finetune-from-model /home/bpop/flores101_mm100_175M/model.pt \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
-    --langs $( cat $MODEL_PATH/language_pairs.txt ) \
-    --lang-pairs "en-ta" \
-    --max-tokens 1200 \
+    --langs $( cat /home/bpop/flores101_mm100_175M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
+    --lang-pairs "en-ta,ta-en" \
+    --max-tokens 1024 \
     --decoder-normalize-before \
     --sampling-method temperature \
     --sampling-temperature 1.5 \
@@ -43,10 +43,14 @@ fairseq-train \
     --arch transformer_wmt_en_de_big \
     --encoder-layers 6 \
     --decoder-layers 6 \
+    --encoder-embed-dim 512 \
+    --decoder-embed-dim 512 \
+    --encoder-ffn-embed-dim 2048 \
+    --decoder-ffn-embed-dim 2048 \
     --encoder-layerdrop 0.05 \
     --decoder-layerdrop 0.05 \
     --share-decoder-input-output-embed \
     --share-all-embeddings \
     --fp16 \
-    --memory-efficient-fp16
-    # --ddp-backend no_c10d  # what on earth is that?
+    --memory-efficient-fp16 \
+    --ddp-backend no_c10d
