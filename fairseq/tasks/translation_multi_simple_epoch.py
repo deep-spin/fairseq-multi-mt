@@ -162,7 +162,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         langs, dicts, training = MultilingualDatasetManager.prepare(
            cls.load_dictionary, args, **kwargs
         )
-
+        print(dicts.keys())
         tgt_dict = dicts["tgt"]  # no idea if this is right
 
         tgt_langs = None
