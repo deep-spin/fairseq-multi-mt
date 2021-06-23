@@ -53,7 +53,6 @@ fairseq-train \
     --memory-efficient-fp16 \
     --ddp-backend no_c10d \
     --find-unused-parameters \
-    --homogeneous-batch \
     --adapter-enc-dim 256 \
     --adapter-enc-type 'per_lang' \
     --adapter-dec-dim 256 \
