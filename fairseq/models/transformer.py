@@ -251,6 +251,8 @@ class TransformerModel(FairseqEncoderDecoderModel):
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""
+        adapter_keys = getattr(task, "adapter_keys", [])
+        args.adapter_keys = adapter_keys if adapter_keys else getattr(args, "adapter_keys", [])
 
         # make sure all arguments are present in older models
         base_architecture(args)
