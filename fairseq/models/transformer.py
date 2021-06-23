@@ -7,10 +7,11 @@ import math
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
+import os
 
 import torch
 import torch.nn as nn
-from fairseq import utils
+from fairseq import utils, checkpoint_utils
 from fairseq.distributed import fsdp_wrap
 from fairseq.models import (
     FairseqEncoder,
@@ -244,7 +245,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
             metavar="STR",
             default=None,
             help="If not None then freeze all modules except for the specified ones",
-
+        )
         # fmt: on
 
     @classmethod
@@ -333,9 +334,9 @@ class TransformerModel(FairseqEncoderDecoderModel):
             _freeze(encoder)
             _unfreeze(encoder, finetune_enc_modules)
             logging.info("Freeze/Un-freeze decoder...")
-            _freeze(decoder) 
+            _freeze(decoder)
             _unfreeze(decoder, finetune_dec_modules)
-        
+
         return cls(args, encoder, decoder)
 
     @classmethod
@@ -356,20 +357,13 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
         pretraining_path = getattr(args, "load_pretrained_encoder_from", None)
         if pretraining_path is not None:
-            if not Path(pretraining_path).exists():
-                logger.warning(
-                    f"skipped pretraining because {pretraining_path} does not exist"
-                )
-            else:
+            if Path(pretraining_path).exists():  # used to be a warning
                 strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False)
-                if not strict:
-                    logging.warning(f'strict mode when loading encoder: {strict}')
 
                 encoder = checkpoint_utils.load_pretrained_component_from_model(
                     component=encoder, checkpoint=pretraining_path,
                     strict=strict
                 )
-                logger.info(f"loaded pretrained encoder from: {pretraining_path}")
         return encoder
 
     @classmethod
@@ -391,7 +385,6 @@ class TransformerModel(FairseqEncoderDecoderModel):
                 ckpt_embed_dim = state_dict['model']['decoder.embed_tokens.weight'].shape[0]
                 embed_dim = decoder.embed_tokens.weight.shape[0]
                 if ckpt_embed_dim != embed_dim:
-                    logging.warning(f'Checkpoint embedding dim {ckpt_embed_dim} != {embed_dim}. Ignore this pretrained layer!')
                     del state_dict['model']['decoder.embed_tokens.weight']
                     strict = False
                 ckpt_output_dim = None
@@ -399,7 +392,6 @@ class TransformerModel(FairseqEncoderDecoderModel):
                     ckpt_output_dim = state_dict['model']['decoder.output_projection.weight'].shape[0]
                 output_dim = decoder.output_projection.weight.shape[0]
                 if ckpt_output_dim != output_dim:
-                    logging.warning(f'Checkpoint output dim {ckpt_output_dim} != {output_dim}. Ignore this pretrained layer!')
                     if 'decoder.output_projection.weight' in state_dict['model']:
                         del state_dict['model']['decoder.output_projection.weight']
                     strict = False
@@ -413,10 +405,6 @@ class TransformerModel(FairseqEncoderDecoderModel):
                     component=decoder,
                     checkpoint=state_dict,
                     strict=strict
-                )
-                logger.info(
-                    f"loaded pretrained decoder from: "
-                    f"{args.load_pretrained_decoder_from}"
                 )
         return decoder
 
