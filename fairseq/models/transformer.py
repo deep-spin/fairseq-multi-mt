@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
@@ -885,6 +886,14 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 - a dictionary with any model-specific outputs
         """
         bs, slen = prev_output_tokens.size()
+
+        adapter_key = None
+        if getattr(self.args, "adapter_keys", None) is not None: # backward compatibility
+            if len(self.args.adapter_keys) == 1:
+                adapter_key = self.args.adapter_keys[0]
+            elif len(self.args.adapter_keys) > 1 and prev_output_tokens[:, 1:2].shape[1] != 0:
+                adapter_key = str(prev_output_tokens[:, 1:2][0].item())
+
         if alignment_layer is None:
             alignment_layer = self.num_layers - 1
 
@@ -952,6 +961,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 self_attn_padding_mask=self_attn_padding_mask,
                 need_attn=bool((idx == alignment_layer)),
                 need_head_weights=bool((idx == alignment_layer)),
+                adapter_key=adapter_key,
             )
             inner_states.append(x)
             if layer_attn is not None and idx == alignment_layer:

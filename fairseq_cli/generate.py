@@ -58,7 +58,7 @@ def get_symbols_to_strip_from_output(generator):
 
 def _main(cfg: DictConfig, output_file):
     logging.basicConfig(
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        format="%(asctime)s (%(module)s:%(lineno)d) | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         level=os.environ.get("LOGLEVEL", "INFO").upper(),
         stream=output_file,

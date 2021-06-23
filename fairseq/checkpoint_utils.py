@@ -750,7 +750,9 @@ def prune_state_dict(state_dict, model_cfg: Optional[DictConfig]):
 
 
 def load_pretrained_component_from_model(
-    component: Union[FairseqEncoder, FairseqDecoder], checkpoint: str
+    component: Union[FairseqEncoder, FairseqDecoder],
+    checkpoint: Union[str, dict],
+    strict=True,
 ):
     """
     Load a pretrained FairseqEncoder or FairseqDecoder from checkpoint into the
@@ -758,9 +760,12 @@ def load_pretrained_component_from_model(
     mismatch in the architecture of the corresponding `component` found in the
     `checkpoint` file.
     """
-    if not PathManager.exists(checkpoint):
-        raise IOError("Model file not found: {}".format(checkpoint))
-    state = load_checkpoint_to_cpu(checkpoint)
+    if isinstance(checkpoint, str):
+        if not PathManager.exists(checkpoint):
+            raise IOError("Model file not found: {}".format(checkpoint))
+        state = load_checkpoint_to_cpu(checkpoint)
+    else:
+        state = checkpoint
     if isinstance(component, FairseqEncoder):
         component_type = "encoder"
     elif isinstance(component, FairseqDecoder):
@@ -776,7 +781,7 @@ def load_pretrained_component_from_model(
             # encoder.input_layers.0.0.weight --> input_layers.0.0.weight
             component_subkey = key[len(component_type) + 1 :]
             component_state_dict[component_subkey] = state["model"][key]
-    component.load_state_dict(component_state_dict, strict=True)
+    component.load_state_dict(component_state_dict, strict=strict)
     return component
 
 
@@ -794,3 +799,41 @@ def verify_checkpoint_directory(save_dir: str) -> None:
         raise e
     else:
         os.remove(temp_file_path)
+
+
+def upgrade_state_dict_named(state_dict, name):
+    prefix = name + "." if name != "" else ""
+    items_to_add = {}
+    keys_to_remove = []
+    for k in state_dict.keys():
+        new_prefix = '.'.join(k.split('.')[:-1])
+        if k.endswith(prefix + "in_proj_weight"):
+            dim = int(state_dict[k].shape[0] / 3)
+            # in_proj_weight used to be q + k + v with same dimensions
+            items_to_add[new_prefix + ".q_proj.weight"] = state_dict[k][:dim]
+            if "encoder_attn" in k: # halve dimension because of ASR pretraining
+                items_to_add[new_prefix + ".k_proj.weight"] = state_dict[k][dim : 2 * dim, : int(dim/2)]
+                items_to_add[new_prefix + ".v_proj.weight"] = state_dict[k][2 * dim :, : int(dim/2)]
+            else:
+                items_to_add[new_prefix + ".k_proj.weight"] = state_dict[k][dim : 2 * dim]
+                items_to_add[new_prefix + ".v_proj.weight"] = state_dict[k][2 * dim :]
+            keys_to_remove.append(k)
+        else:
+            dim = int(state_dict[k].shape[0])
+            if "encoder_attn.k_proj.weight" in k:
+                state_dict[k] = state_dict[k][:, : int(dim/2)]
+            elif "encoder_attn.v_proj.weight" in k:
+                state_dict[k] = state_dict[k][:, : int(dim/2)]
+
+        if k.endswith(prefix + "in_proj_bias"):
+            dim = int(state_dict[k].shape[0] / 3)
+            items_to_add[new_prefix + ".q_proj.bias"] = state_dict[k][:dim]
+            items_to_add[new_prefix + ".k_proj.bias"] = state_dict[k][dim : 2 * dim]
+            items_to_add[new_prefix + ".v_proj.bias"] = state_dict[k][2 * dim :]
+            keys_to_remove.append(k)
+
+    for k in keys_to_remove:
+        del state_dict[k]
+
+    for key, value in items_to_add.items():
+        state_dict[key] = value

@@ -44,8 +44,6 @@ from fairseq.trainer import Trainer
 from omegaconf import DictConfig, OmegaConf
 
 
-
-
 def main(cfg: FairseqConfig) -> None:
     if isinstance(cfg, argparse.Namespace):
         cfg = convert_namespace_to_omegaconf(cfg)

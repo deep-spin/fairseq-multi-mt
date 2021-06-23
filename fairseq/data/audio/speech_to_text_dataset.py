@@ -197,6 +197,7 @@ def _collate_frames(
 
 class SpeechToTextDataset(FairseqDataset):
     LANG_TAG_TEMPLATE = "<lang:{}>"
+    LANG_TAG_MBART_TEMPLATE = "[{}_{}]"
 
     def __init__(
         self,
@@ -214,11 +215,15 @@ class SpeechToTextDataset(FairseqDataset):
         tgt_dict: Optional[Dictionary] = None,
         pre_tokenizer=None,
         bpe_tokenizer=None,
+        use_mbart=False,
+        subtask="st",
     ):
         self.split, self.is_train_split = split, is_train_split
         self.data_cfg = data_cfg
         self.audio_paths, self.n_frames = audio_paths, n_frames
         self.n_samples = len(audio_paths)
+        self.use_mbart = use_mbart
+        self.subtask = subtask
         assert len(n_frames) == self.n_samples > 0
         assert src_texts is None or len(src_texts) == self.n_samples
         assert tgt_texts is None or len(tgt_texts) == self.n_samples
@@ -254,17 +259,34 @@ class SpeechToTextDataset(FairseqDataset):
         )
 
     @classmethod
-    def is_lang_tag(cls, token):
-        pattern = cls.LANG_TAG_TEMPLATE.replace("{}", "(.*)")
+    def is_lang_tag(cls, token, use_mbart=False):
+        if not use_mbart:
+            pattern = cls.LANG_TAG_TEMPLATE.replace("{}", "(.*)")
+        else:
+            pattern = "\[(.*)_(.*)\]"
         return re.match(pattern, token)
 
     def check_tgt_lang_tag(self):
         if self.data_cfg.prepend_tgt_lang_tag:
             assert self.tgt_langs is not None and self.tgt_dict is not None
-            tgt_lang_tags = [
-                self.LANG_TAG_TEMPLATE.format(t) for t in set(self.tgt_langs)
+            if not self.use_mbart:
+                tgt_lang_tags = [
+                    self.LANG_TAG_TEMPLATE.format(t) for t in set(self.tgt_langs)
+                ]
+            else:
+                tgt_lang_tags = [
+                self.LANG_TAG_MBART_TEMPLATE.format(t, t.upper()) for t in set(self.tgt_langs)
             ]
-            assert all(t in self.tgt_dict for t in tgt_lang_tags)
+                special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
+                for i, t in enumerate(tgt_lang_tags):
+                    if t not in self.tgt_dict:
+                        lang_tmp = t.split("_")[0].replace('[','')
+                        if lang_tmp in special_symbols:
+                            tgt_lang_tags[i] = special_symbols[lang_tmp]
+                        else:
+                            tgt_lang_tags[i] = "[" + lang_tmp + "_XX]"
+            logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
+            assert all(t in self.tgt_dict for t in tgt_lang_tags)     
 
     def tokenize_text(self, text: str):
         if self.pre_tokenizer is not None:
@@ -285,15 +307,50 @@ class SpeechToTextDataset(FairseqDataset):
         source = torch.from_numpy(source).float()
 
         target = None
-        if self.tgt_texts is not None:
+        if self.tgt_texts is not None and self.subtask == "st":
             tokenized = self.tokenize_text(self.tgt_texts[index])
             target = self.tgt_dict.encode_line(
                 tokenized, add_if_not_exist=False, append_eos=True
             ).long()
             if self.data_cfg.prepend_tgt_lang_tag:
-                lang_tag = self.LANG_TAG_TEMPLATE.format(self.tgt_langs[index])
+                if not self.use_mbart:
+                    lang_tag = self.LANG_TAG_TEMPLATE.format(self.tgt_langs[index])
+                else:
+                    lang_tag = self.LANG_TAG_MBART_TEMPLATE.format(self.tgt_langs[index],
+                                                                self.tgt_langs[index].upper())
+                    special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
+                    if lang_tag not in self.tgt_dict:
+                        lang_tmp = lang_tag.split("_")[0].replace('[','')
+                        if lang_tmp in special_symbols:
+                            lang_tag = special_symbols[lang_tmp]
+                        else:
+                            lang_tag = "[" + lang_tmp + "_XX]"
                 lang_tag_idx = self.tgt_dict.index(lang_tag)
                 target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
+        
+        if self.src_texts is not None and self.subtask == "asr":
+            # logging.info(f'self.src_texts[index]: {self.src_texts[index]}')
+            tokenized = self.tokenize_text(self.src_texts[index])
+            target = self.tgt_dict.encode_line(
+                tokenized, add_if_not_exist=False, append_eos=True
+            ).long()
+            if self.data_cfg.prepend_tgt_lang_tag:
+                if not self.use_mbart:
+                    lang_tag = self.LANG_TAG_TEMPLATE.format(self.tgt_langs[index])
+                else:
+                    lang_tag = self.LANG_TAG_MBART_TEMPLATE.format(self.tgt_langs[index],
+                                                                    self.tgt_langs[index].upper())
+                    special_symbols = {"cs": "cs_CZ", "vi": "vi_VN", "fa": "fa_IR", "zh": "zh_CN"}
+                    if lang_tag not in self.tgt_dict:
+                        lang_tmp = lang_tag.split("_")[0].replace('[','')
+                        if lang_tmp in special_symbols:
+                            lang_tag = special_symbols[lang_tmp]
+                        else:
+                            lang_tag = "[" + lang_tmp + "_XX]"
+
+                lang_tag_idx = self.tgt_dict.index(lang_tag)
+                target = torch.cat((torch.LongTensor([lang_tag_idx]), target), 0)
+
         return index, source, target
 
     def __len__(self):
@@ -402,6 +459,8 @@ class SpeechToTextDatasetCreator(object):
         tgt_dict,
         pre_tokenizer,
         bpe_tokenizer,
+        use_mbart,
+        subtask,
     ) -> SpeechToTextDataset:
         audio_paths, n_frames, src_texts, tgt_texts, ids = [], [], [], [], []
         speakers, src_langs, tgt_langs = [], [], []
@@ -433,6 +492,8 @@ class SpeechToTextDatasetCreator(object):
             tgt_dict,
             pre_tokenizer,
             bpe_tokenizer,
+            use_mbart,
+            subtask,
         )
 
     @classmethod
@@ -465,6 +526,9 @@ class SpeechToTextDatasetCreator(object):
         is_train_split: bool,
         epoch: int,
         seed: int,
+        homogeneous_batch: bool,
+        use_mbart: bool,
+        subtask: str,
     ) -> SpeechToTextDataset:
         samples = []
         _splits = splits.split(",")
@@ -493,6 +557,8 @@ class SpeechToTextDatasetCreator(object):
                 tgt_dict,
                 pre_tokenizer,
                 bpe_tokenizer,
+                use_mbart,
+                subtask,
             )
             for name, s in zip(_splits, samples)
         ]
@@ -508,4 +574,4 @@ class SpeechToTextDatasetCreator(object):
                 )
                 for d, r in zip(datasets, size_ratios)
             ]
-        return ConcatDataset(datasets)
+        return ConcatDataset(datasets, homogeneous_batch=homogeneous_batch)
