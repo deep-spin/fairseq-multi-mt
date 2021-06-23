@@ -163,7 +163,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
            cls.load_dictionary, args, **kwargs
         )
 
-        tgt_dict = dicts["tgt"]  # no idea if this is right
+        tgt_dict = next(iter(dicts.values()))  # assumption: single shared dict
 
         tgt_langs = None
         adapter_keys = []
