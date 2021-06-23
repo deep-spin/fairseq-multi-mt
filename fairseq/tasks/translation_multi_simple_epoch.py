@@ -170,7 +170,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         # Add adapter keys
         if args.lang_pairs is not None:
             # this part makes sense
-            tgt_langs = sorted([s.split('-')[-1] for s in args.lang_pairs.split(',')])
+            tgt_langs = sorted([s.split('-')[-1] for s in args.lang_pairs])
 
             tgt_lang_tags = ["__{}__".format(t) for t in set(tgt_langs)]
 
