@@ -8,16 +8,10 @@ CHECKPOINT_PATH=$2
 fairseq-train \
     $BIN_PATH \
     --save-dir $CHECKPOINT_PATH \
-    --task translation_multi_simple_epoch \
+    --task translation \
     --encoder-normalize-before \
-    --langs "en,ta" \
-    --lang-pairs "en-ta,ta-en" \
     --max-tokens 1024 \
     --decoder-normalize-before \
-    --sampling-method temperature \
-    --sampling-temperature 1.0 \
-    --encoder-langtok src \
-    --decoder-langtok \
     --criterion label_smoothed_cross_entropy \
     --label-smoothing 0.1 \
     --optimizer adam \
@@ -32,12 +26,11 @@ fairseq-train \
     --weight-decay 0.0 \
     --update-freq 2 \
     --save-interval 1 \
-    --save-interval-updates 5000 \
-    --keep-interval-updates 10 \
+    --keep-best-checkpoints 1 \
     --no-epoch-checkpoints \
     --seed 222 \
     --log-format simple \
-    --log-interval 2 \
+    --log-interval 10 \
     --patience 10 \
     --arch transformer_wmt_en_de_big \
     --encoder-layers 6 \
