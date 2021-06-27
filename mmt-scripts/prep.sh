@@ -32,7 +32,7 @@ for lang in $LANG1 $LANG2 ; do
     flores_lang=$(echo $lang | python $SCRIPTS_PATH/flores2m2m.py flores)
     for split in dev devtest ; do
         outsplit=$(echo $split | sed "s/devtest/test/g")
-        cat $FLORES_PATH/$split/$flores_lang.$split | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH > $DATA_DIR/spm/$outsplit.$LANG1-$LANG2.$lang
+        cat $FLORES_PATH/$split/$flores_lang.$split | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH/sentencepiece.bpe.model > $DATA_DIR/spm/$outsplit.$LANG1-$LANG2.$lang
     done
 done
 
@@ -41,6 +41,6 @@ done
 destdir=$DATA_DIR/bin/$LANG1-$LANG2
 fairseq-preprocess \
     --source-lang $LANG1 --target-lang $LANG2 \
-    --trainpref $TRAINPREF --validpref $VALIDPREF--testpref $TESTPREF \
+    --trainpref $TRAINPREF --validpref $VALIDPREF --testpref $TESTPREF \
     --thresholdsrc 0 --thresholdtgt 0 \
     --destdir $destdir --srcdict $DICT --tgtdict $DICT
