@@ -32,7 +32,7 @@ for lang in $LANG1 $LANG2 ; do
     flores_lang=$(echo $lang | python $SCRIPTS_PATH/flores2m2m.py flores)
     for split in dev devtest ; do
         outsplit=$(echo $split | sed "s/devtest/test/g")
-        cat $FLORES_PATH/$outsplit/$flores_lang.$outsplit | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH > $DATA_DIR/spm/$outsplit.$LANG1-$LANG2.$lang
+        cat $FLORES_PATH/$outsplit/$flores_lang.$split | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH > $DATA_DIR/spm/$outsplit.$LANG1-$LANG2.$lang
     done
 done
 
