@@ -17,14 +17,14 @@ SCRIPTS_PATH=$FAIRSEQ_PATH/mmt-scripts
 
 DICT=$MODEL_PATH/dict.txt
 
-TRAINPREF=train.$LANG1-$LANG2
-VALIDPREF=dev.$LANG1-$LANG2
-TESTPREF=test.$LANG1-$LANG2
+TRAINPREF=$DATA_DIR/spm/train.$LANG1-$LANG2
+VALIDPREF=$DATA_DIR/spm/dev.$LANG1-$LANG2
+TESTPREF=$DATA_DIR/spm/test.$LANG1-$LANG2
 
 # segment corpora and write them to DATA_DIR
 # train corpora are specific to each language PAIR (en data is different for en-ta than en-sr, for example)
 for lang in $LANG1 $LANG2 ; do
-    cat $TRAIN_PATH/*$LANG1-$LANG2.$lang | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH/sentencepiece.bpe.model > $DATA_DIR/spm/$TRAINPREF.$lang
+    cat $TRAIN_PATH/*$LANG1-$LANG2.$lang | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH/sentencepiece.bpe.model > $TRAINPREF.$lang
 done
 
 # dev/devtest data are NOT pair-dependent (it's the same English set no matter what the other language is)
