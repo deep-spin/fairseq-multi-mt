@@ -30,19 +30,18 @@ fairseq-train \
     --adam-betas '(0.9, 0.98)' \
     --lr-scheduler inverse_sqrt \
     --lr 3e-05 \
-    --warmup-updates 2500 \
-    --max-update 40000 \
+    --warmup-updates 4000 \
+    --max-update 250000 \
     --dropout 0.3 \
     --attention-dropout 0.1 \
     --weight-decay 0.0 \
     --update-freq 2 \
-    --save-interval 1 \
-    --save-interval-updates 5000 \
-    --keep-interval-updates 10 \
+    --keep-best-checkpoints 1 \
+    --save-interval-updates 20000 \
     --no-epoch-checkpoints \
     --seed 222 \
     --log-format simple \
-    --log-interval 2 \
+    --log-interval 10 \
     --patience 10 \
     --arch transformer_wmt_en_de_big \
     --encoder-layers 6 \
