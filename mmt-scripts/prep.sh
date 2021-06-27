@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # these should be alphabetized, otherwise no paths will match
-LANG1=$1
-LANG2=$2
-MODEL_PATH=$3
-TRAIN_PATH=$4
-FLORES_PATH=$5
-DATA_DIR=$6
+PAIR=$1
+MODEL_PATH=$2
+TRAIN_PATH=$3
+FLORES_PATH=$4
+DATA_DIR=$5
+
+LANG1=$( echo $PAIR | cut -f 1 -d "-")
+LANG2=$( echo $PAIR | cut -f 2 -d "-")
 
 mkdir -p $DATA_DIR/spm
 mkdir -p $DATA_DIR/bin
