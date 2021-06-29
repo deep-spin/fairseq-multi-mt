@@ -2,6 +2,7 @@
 
 import sys
 import re
+import argparse
 from collections import defaultdict
 from os.path import basename
 
@@ -42,9 +43,14 @@ def print_results(results, languages):
 
 
 if __name__ == "__main__":
-    eur = ["en", "et", "hr", "hu", "mk", "sr"]
-    sea = ["en", "id", "jv", "ms", "ta", "tl"]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("tasks", nargs="*")
+    opt = parser.parse_args()
+    task_langs = {"eur": ["en", "et", "hr", "hu", "mk", "sr"],
+                  "sea": ["en", "id", "jv", "ms", "ta", "tl"]}
+    assert all(task in task_langs for task in opt.tasks)
     results = parse_results(sys.stdin)
-    print_results(results, eur)
-    print_results(results, sea)
+    for task in opt.tasks:
+        print(task)
+        print_results(results, task_langs[task])
             
