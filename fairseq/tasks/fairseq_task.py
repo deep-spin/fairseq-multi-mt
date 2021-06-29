@@ -468,6 +468,7 @@ class FairseqTask(object):
             temperature=getattr(args, "temperature", 1.0),
             match_source_len=getattr(args, "match_source_len", False),
             no_repeat_ngram_size=getattr(args, "no_repeat_ngram_size", 0),
+            alpha=getattr(args, "alpha", 1.0),
             search_strategy=search_strategy,
             **extra_gen_cls_kwargs,
         )
