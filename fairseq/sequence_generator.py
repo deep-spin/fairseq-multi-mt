@@ -337,6 +337,7 @@ class SequenceGenerator(nn.Module):
                 self.temperature,
                 alpha=self.alpha
             )
+            lprobs.masked_fill_(lprobs == float('-inf'), -65503)  # sparse search workaround?
 
             if self.lm_model is not None:
                 lm_out = self.lm_model(tokens[:, : step + 1])
