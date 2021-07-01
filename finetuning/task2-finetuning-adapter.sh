@@ -9,7 +9,6 @@ CHECKPOINT_PATH=$1
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
     /home/bpop/fairseq-multi-mt/task2-data/bin/ \
-    --finetune-from-model /home/bpop/flores101_mm100_175M/model.pt \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
