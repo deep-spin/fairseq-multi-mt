@@ -83,8 +83,10 @@ class SampledMultiDataset(FairseqDataset):
         split="",
         shared_collater=False,
         shuffle=True,
+        homogeneous_batch=False
     ):
         super().__init__()
+        self.homogeneous_batch = homogeneous_batch
         self.shared_collater = shared_collater
         self.shuffle = shuffle
 
@@ -465,3 +467,66 @@ class SampledMultiDataset(FairseqDataset):
         return data_utils.filter_paired_dataset_indices_by_size(
             src_sizes, tgt_sizes, indices, max_sizes
         )
+
+    def batch_by_size(
+        self,
+        indices,
+        max_tokens=None,
+        max_sentences=None,
+        required_batch_size_multiple=1,
+    ):
+        if not self.homogeneous_batch:
+            return super().batch_by_size(
+                    indices=indices,
+                    max_tokens=max_tokens,
+                    max_sentences=max_sentences,
+                    required_batch_size_multiple=required_batch_size_multiple,
+                    )
+        else:
+        # If we want homogeneous batch, i.e., each batch contains only samples
+        # drawn from the same subset
+            return self._batch_by_size_homogeneous(
+                    indices=indices,
+                    max_tokens=max_tokens,
+                    max_sentences=max_sentences,
+                    required_batch_size_multiple=required_batch_size_multiple,
+                    )
+
+    def _batch_by_size_homogeneous(
+        self,
+        indices,
+        max_tokens=None,
+        max_sentences=None,
+        required_batch_size_multiple=1,
+    ):
+        start_idx = 0
+        batch_samplers = [None]*len(self.datasets)
+        # num_samples = [len(s) for s in self.datasets]
+
+        for i, d in enumerate(self.datasets):
+            batch_samplers[i] = super().batch_by_size(
+                        indices=indices[start_idx: start_idx+len(d)],
+                        max_tokens=max_tokens,
+                        max_sentences=max_sentences,
+                        required_batch_size_multiple=required_batch_size_multiple,
+                        )
+            start_idx += len(d)
+        # Create a new batch sampler that choose randomly a batch among the above
+        # batch samplers
+        # iterators = list(map(iter, batch_samplers))
+        # while iterators:
+        #     iterator = np.random.choice(iterators)
+        #     try:
+        #         yield next(iterator)
+        #     except StopIteration:
+        #         iterators.remove(iterator)
+        # iterators = [iter(s) for s in batch_samplers]
+        iterators = list(map(iter, batch_samplers))
+        # num_batches = [len(s) for s in batch_samplers]
+
+        while iterators:
+            for i, iterator in enumerate(iterators):
+                try:
+                    yield next(iterator)
+                except StopIteration:
+                    iterators.remove(iterator)
