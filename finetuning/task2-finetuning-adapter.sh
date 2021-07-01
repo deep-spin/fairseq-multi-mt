@@ -55,9 +55,9 @@ fairseq-train \
     --memory-efficient-fp16 \
     --ddp-backend no_c10d \
     --find-unused-parameters \
-    --adapter-enc-dim 256 \
+    --adapter-enc-dim 1024 \
     --adapter-enc-type 'per_lang' \
-    --adapter-dec-dim 256 \
+    --adapter-dec-dim 1024 \
     --adapter-dec-type 'per_lang' \
     --finetune-enc-modules adapter \
     --finetune-dec-modules adapter \
