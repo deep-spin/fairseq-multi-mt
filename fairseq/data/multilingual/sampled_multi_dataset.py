@@ -483,8 +483,8 @@ class SampledMultiDataset(FairseqDataset):
                     required_batch_size_multiple=required_batch_size_multiple,
                     )
         else:
-        # If we want homogeneous batch, i.e., each batch contains only samples
-        # drawn from the same subset
+            # We want homogeneous batch, where each batch contains only
+            # samples drawn from the same subset (i.e. language pair)
             return self._batch_by_size_homogeneous(
                     indices=indices,
                     max_tokens=max_tokens,

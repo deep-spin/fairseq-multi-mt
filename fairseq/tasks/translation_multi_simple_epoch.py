@@ -98,14 +98,8 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
                             help='Weight to combine parallel adapters to the main branch')
         parser.add_argument('--adapter-dec-parallel-learnable', action='store_true',
                             help='Use learnable or fixed weight.')
-        '''
         parser.add_argument('--homogeneous-batch', action='store_true',
-                            help='Use homogeneous batch in training and evaluation.')
-        parser.add_argument('--use-mbart', action='store_true',
-                            help='Use mbart initialization.')
-        parser.add_argument('--update-state-dict-mbart', action='store_true',
-                            help='Update mbart initialization for multihead-attention layer.')
-        '''
+                            help='Use homogeneous batch in training.')
         # end args for "Adapters for Multilingual Speech Translation"
 
         SamplingMethod.add_arguments(parser)
