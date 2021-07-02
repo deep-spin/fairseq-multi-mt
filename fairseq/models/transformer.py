@@ -627,9 +627,8 @@ class TransformerEncoder(FairseqEncoder):
         if len(self.args.adapter_keys) == 1:
             adapter_key = self.args.adapter_keys[0]
         elif len(self.args.adapter_keys) > 1:
-            adapter_key = None
-            print(self.args.adapter_keys)
-            print(src_tokens[:, 0])
+            # hacky way to get src langid
+            adapter_key = str(src_tokens[0, 0].item())
         else:
             adapter_key = None
 
