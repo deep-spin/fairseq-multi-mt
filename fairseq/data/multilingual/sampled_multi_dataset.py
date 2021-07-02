@@ -534,7 +534,7 @@ class SampledMultiDataset(FairseqDataset):
                     iterators.remove(iterator)
         '''
         # sort indices by which dataset (i.e. language pair) they come from
-        dataset_indices = {key: [] for key in self.datasets}
+        dataset_indices = [[] for _ in self.datasets]
         for i in indices:
             _, key = self._map_index(i)
             dataset_indices[key].append(i)

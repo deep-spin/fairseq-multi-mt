@@ -62,4 +62,5 @@ fairseq-train \
     --finetune-enc-modules adapter \
     --finetune-dec-modules adapter \
     --load-pretrained-encoder-from /home/bpop/flores101_mm100_175M/model.pt \
-    --load-pretrained-decoder-from /home/bpop/flores101_mm100_175M/model.pt
+    --load-pretrained-decoder-from /home/bpop/flores101_mm100_175M/model.pt \
+    --homogeneous-batch

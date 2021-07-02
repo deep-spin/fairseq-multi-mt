@@ -626,8 +626,10 @@ class TransformerEncoder(FairseqEncoder):
         """
         if len(self.args.adapter_keys) == 1:
             adapter_key = self.args.adapter_keys[0]
-        elif len(self.args.adapter_keys) > 1 and prev_output_tokens is not None:
-            adapter_key = str(prev_output_tokens[:, 1:2][0].item())
+        elif len(self.args.adapter_keys) > 1:
+            adapter_key = None
+            print(self.args.adapter_keys)
+            print(src_tokens[:, 0])
         else:
             adapter_key = None
 
