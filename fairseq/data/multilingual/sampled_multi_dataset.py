@@ -568,7 +568,7 @@ class SampledMultiDataset(FairseqDataset):
         maps to index 1 of B.
         """
         counter = 0
-        for key, dataset in self.datasets.items():
+        for key, dataset in enumerate(self.datasets):
             if index < counter + len(dataset):
                 return index - counter, key
             counter += len(dataset)
