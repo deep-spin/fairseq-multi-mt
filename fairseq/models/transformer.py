@@ -624,6 +624,14 @@ class TransformerEncoder(FairseqEncoder):
                   hidden states of shape `(src_len, batch, embed_dim)`.
                   Only populated if *return_all_hiddens* is True.
         """
+        if len(self.args.adapter_keys) == 1:
+            adapter_key = self.args.adapter_keys[0]
+        elif len(self.args.adapter_keys) > 1:
+            # hacky way to get src langid
+            adapter_key = str(src_tokens[0, 0].item())
+        else:
+            adapter_key = None
+
         # compute padding mask
         encoder_padding_mask = src_tokens.eq(self.padding_idx)
         has_pads = src_tokens.device.type == "xla" or encoder_padding_mask.any()
@@ -645,7 +653,9 @@ class TransformerEncoder(FairseqEncoder):
         # encoder layers
         for layer in self.layers:
             x = layer(
-                x, encoder_padding_mask=encoder_padding_mask if has_pads else None
+                x,
+                encoder_padding_mask=encoder_padding_mask if has_pads else None,
+                adapter_key=adapter_key
             )
             if return_all_hiddens:
                 assert encoder_states is not None

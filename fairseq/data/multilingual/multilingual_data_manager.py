@@ -1091,6 +1091,7 @@ class MultilingualDatasetManager(object):
                 virtual_epoch_size=self.args.virtual_epoch_size,
                 # if not using lang_tok altering, simplified to use the same collater
                 shared_collater=self._shared_collater(),
+                homogeneous_batch=self.args.homogeneous_batch
             )
         else:
             return self.load_into_concat_dataset(split, datasets, data_param_list)
@@ -1114,6 +1115,7 @@ class MultilingualDatasetManager(object):
                 split=split,
                 # if not using lang_tok altering, simplified to use the same collater
                 shared_collater=self._shared_collater(),
+                homogeneous_batch=self.args.homogeneous_batch
             )
         else:
             return self.load_into_concat_dataset(split, datasets, data_param_list)

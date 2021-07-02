@@ -9,7 +9,6 @@ CHECKPOINT_PATH=$1
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
     /home/bpop/fairseq-multi-mt/task2-data/bin/ \
-    --finetune-from-model /home/bpop/flores101_mm100_175M/model.pt \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
@@ -56,11 +55,12 @@ fairseq-train \
     --memory-efficient-fp16 \
     --ddp-backend no_c10d \
     --find-unused-parameters \
-    --adapter-enc-dim 256 \
+    --adapter-enc-dim 1024 \
     --adapter-enc-type 'per_lang' \
-    --adapter-dec-dim 256 \
+    --adapter-dec-dim 1024 \
     --adapter-dec-type 'per_lang' \
     --finetune-enc-modules adapter \
     --finetune-dec-modules adapter \
     --load-pretrained-encoder-from /home/bpop/flores101_mm100_175M/model.pt \
-    --load-pretrained-decoder-from /home/bpop/flores101_mm100_175M/model.pt
+    --load-pretrained-decoder-from /home/bpop/flores101_mm100_175M/model.pt \
+    --homogeneous-batch
