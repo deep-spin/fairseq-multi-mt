@@ -534,9 +534,11 @@ class SampledMultiDataset(FairseqDataset):
                     iterators.remove(iterator)
         '''
         # sort indices by which dataset (i.e. language pair) they come from
+        # how do we really do that? We need to know for sure how big the datasets
+        # are
         dataset_indices = [[] for _ in self.datasets]
         for i in indices:
-            _, key = self._map_index(i)
+            key, _ = self._get_dataset_and_index(i)
             dataset_indices[key].append(i)
 
         batches = []
@@ -557,19 +559,3 @@ class SampledMultiDataset(FairseqDataset):
             with data_utils.numpy_seed(self.seed, self.epoch, self.distributed_rank):
                 np.random.shuffle(batches)
         return batches
-
-    def _map_index(self, index: int):
-        """
-        Ported from multi_corpus_dataset. The indices passed to batch_by_size
-        appear not be be dataset-specific. Therefore, in order to 
-        
-        If dataset A has length N and dataset B has length M
-        then index 1 maps to index 1 of dataset A, and index N + 1
-        maps to index 1 of B.
-        """
-        counter = 0
-        for key, dataset in enumerate(self.datasets):
-            if index < counter + len(dataset):
-                return index - counter, key
-            counter += len(dataset)
-        raise ValueError("Invalid index: {}".format(index))
