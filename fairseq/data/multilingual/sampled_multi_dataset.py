@@ -499,17 +499,19 @@ class SampledMultiDataset(FairseqDataset):
         max_sentences=None,
         required_batch_size_multiple=1,
     ):
+        '''
         start_idx = 0
-        batch_samplers = [None]*len(self.datasets)
+        batch_samplers = [None] * len(self.datasets)
         # num_samples = [len(s) for s in self.datasets]
 
+        # this seems to assume
         for i, d in enumerate(self.datasets):
             batch_samplers[i] = super().batch_by_size(
-                        indices=indices[start_idx: start_idx+len(d)],
-                        max_tokens=max_tokens,
-                        max_sentences=max_sentences,
-                        required_batch_size_multiple=required_batch_size_multiple,
-                        )
+                indices=indices[start_idx: start_idx+len(d)],
+                max_tokens=max_tokens,
+                max_sentences=max_sentences,
+                required_batch_size_multiple=required_batch_size_multiple,
+            )
             start_idx += len(d)
         # Create a new batch sampler that choose randomly a batch among the above
         # batch samplers
@@ -530,3 +532,44 @@ class SampledMultiDataset(FairseqDataset):
                     yield next(iterator)
                 except StopIteration:
                     iterators.remove(iterator)
+        '''
+        # sort indices by which dataset (i.e. language pair) they come from
+        dataset_indices = {key: [] for key in self.datasets}
+        for i in indices:
+            _, key = self._map_index(i)
+            dataset_indices[key].append(i)
+
+        batches = []
+        for key in dataset_indices:
+            cur_batches = super().batch_by_size(
+                np.array(dataset_indices[key], dtype=np.int64),
+                max_tokens,
+                max_sentences,
+                required_batch_size_multiple,
+            )
+            logger.info(f"Created {len(cur_batches)} batches for dataset {key}")
+            batches += cur_batches
+
+        # If this dataset is used in a distributed training setup,
+        # then shuffle such that the order is seeded by the distributed rank
+        # as well
+        if self.distributed_rank is not None:
+            with data_utils.numpy_seed(self.seed, self.epoch, self.distributed_rank):
+                np.random.shuffle(batches)
+        return batches
+
+    def _map_index(self, index: int):
+        """
+        Ported from multi_corpus_dataset. The indices passed to batch_by_size
+        appear not be be dataset-specific. Therefore, in order to 
+        
+        If dataset A has length N and dataset B has length M
+        then index 1 maps to index 1 of dataset A, and index N + 1
+        maps to index 1 of B.
+        """
+        counter = 0
+        for key, dataset in self.datasets.items():
+            if index < counter + len(dataset):
+                return index - counter, key
+            counter += len(dataset)
+        raise ValueError("Invalid index: {}".format(index))
