@@ -160,7 +160,6 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
 
         tgt_dict = next(iter(dicts.values()))  # assumption: single shared dict
 
-        tgt_langs = None
         adapter_keys = []
         # Add adapter keys
         if args.lang_pairs is not None:
@@ -168,8 +167,6 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
                 chain.from_iterable(p.split("-") for p in args.lang_pairs)
             )
             lang_tags = ["__{}__".format(lang) for lang in set(langs)]
-
-            tgt_lang_tags = ["__{}__".format(t) for t in set(tgt_langs)]
 
             assert len(lang_tags) >= 1
 
@@ -189,7 +186,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
             if args.adapter_keys and len(tgt_lang_tags) > 1:
                 assert args.homogeneous_batch  # what is homogeneous batch for?
             '''
-            logging.info(f'| tgt_lang_tags: {tgt_lang_tags}')
+            logging.info(f'| lang_tags (src and tgt): {lang_tags}')
             logging.info(f'| adapter_keys: {args.adapter_keys}')
 
         '''
