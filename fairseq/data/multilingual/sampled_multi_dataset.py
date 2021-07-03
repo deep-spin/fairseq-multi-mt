@@ -542,20 +542,22 @@ class SampledMultiDataset(FairseqDataset):
             dataset_indices[key].append(i)
 
         batches = []
-        for key in dataset_indices:
+        for i, dataset_ix in enumerate(dataset_indices):
             cur_batches = super().batch_by_size(
-                np.array(dataset_indices[key], dtype=np.int64),
+                np.array(dataset_ix, dtype=np.int64),
                 max_tokens,
                 max_sentences,
                 required_batch_size_multiple,
             )
-            logger.info(f"Created {len(cur_batches)} batches for dataset {key}")
+            logger.info(f"Created {len(cur_batches)} batches for dataset {i}")
             batches += cur_batches
 
         # If this dataset is used in a distributed training setup,
         # then shuffle such that the order is seeded by the distributed rank
         # as well
+        '''
         if self.distributed_rank is not None:
             with data_utils.numpy_seed(self.seed, self.epoch, self.distributed_rank):
                 np.random.shuffle(batches)
+        '''
         return batches
