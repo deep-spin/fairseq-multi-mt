@@ -6,6 +6,7 @@
 import datetime
 import logging
 import time
+from itertools import chain
 
 import torch
 from fairseq.data import (
@@ -163,22 +164,25 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         adapter_keys = []
         # Add adapter keys
         if args.lang_pairs is not None:
-            # this part makes sense
-            tgt_langs = sorted([s.split('-')[-1] for s in args.lang_pairs])
+            langs = sorted(
+                chain.from_iterable(p.split("-") for p in args.lang_pairs)
+            )
+            lang_tags = ["__{}__".format(lang) for lang in set(langs)]
 
             tgt_lang_tags = ["__{}__".format(t) for t in set(tgt_langs)]
 
-            assert len(tgt_lang_tags) >= 1
+            assert len(lang_tags) >= 1
 
             # why only tgts?
-            for t in tgt_lang_tags:
-                idx = tgt_dict.index(t)
-                logging.info(f'{t}: {idx}')
+            assert args.adapter_enc_type == args.adapter_dec_type  # practical
+            for tag in lang_tags:
+                idx = tgt_dict.index(tag)  # assume shared dicts
+                logging.info(f'{tag}: {idx}')
                 if args.adapter_dec_type == 'per_lang': # use multilingual dict
                     assert idx != tgt_dict.unk_index
                     adapter_keys.append(str(idx))
                 elif args.adapter_dec_type == 'shared': # use bilingual dict
-                    adapter_keys.append(tgt_lang_tags[0])
+                    adapter_keys.append(lang_tags[0])
 
             args.adapter_keys = adapter_keys
             '''
