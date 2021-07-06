@@ -1,8 +1,7 @@
 #MODEL_PATH=/home/bpop/flores101_mm100_175M/
 MODEL_PATH=$1
 FLORES_MODEL_PATH=$2
-DATA_BIN_PATH=$3
-RESULTS_PATH=$4
+RESULTS_PATH=$3
 DICT=$FLORES_MODEL_PATH/dict.txt
 FLORES_PATH=/home/bpop/flores101_dataset/
 FAIRSEQ_PATH=/home/bpop/fairseq-multi-mt/
@@ -33,4 +32,6 @@ for SRC in $LANGUAGES ; do
                 fairseq-generate hyp-data/$PIVOT/bin/$SRC.$PIVOT-$TGT --batch-size 32 --path $MODEL_PATH --fixed-dictionary $DICT -s $PIVOT -t $TGT --remove-bpe 'sentencepiece' --beam $BEAM --task translation_multi_simple_epoch --lang-pairs $FLORES_MODEL_PATH/language_pairs.txt --decoder-langtok --encoder-langtok src --gen-subset test --fp16 --dataset-impl mmap --distributed-world-size 1 --distributed-no-spawn --skip-invalid-size-inputs-valid-test --results-path $results_dir
                 cat $results_dir/generate-test.txt | grep -P '^H-'  | cut -c 3- | sort -n -k 1 | awk -F "\t" '{print $NF}' | sacrebleu $FLORES_PATH/devtest/$FLORES_TGT.devtest --tokenize spm
             fi
+        done
     fi
+done
