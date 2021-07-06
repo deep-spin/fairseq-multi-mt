@@ -29,7 +29,7 @@ for SRC in $LANGUAGES ; do
                 # decide what results_dir should be.
                 # resegment and copy src-pivot hypotheses to pivoting/hyp-data/$PIVOT/spm/$SRC.$PIVOT-$TGT.$PIVOT
                 results_dir=$PIVOT_DIR/results/$PIVOT/hypotheses.$SRC-$TGT.$TGT
-                cat $RESULTS_PATH/hypotheses.$SRC-$TGT.$TGT/generate-test.txt | grep -P '^H-'  | cut -c 3- | sort -n -k 1 | awk -F "\t" '{print $NF}' | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $FLORES_MODEL_PATH/sentencepiece.bpe.model > $PIVOT_DIR/data/$PIVOT/spm/$SRC.$PIVOT-$TGT.$PIVOT
+                cat $RESULTS_PATH/hypotheses.$SRC-$PIVOT.$PIVOT/generate-test.txt | grep -P '^H-'  | cut -c 3- | sort -n -k 1 | awk -F "\t" '{print $NF}' | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $FLORES_MODEL_PATH/sentencepiece.bpe.model > $PIVOT_DIR/data/$PIVOT/spm/$SRC.$PIVOT-$TGT.$PIVOT
                 FLORES_TGT=$(echo $TGT | python $SCRIPTS_PATH/flores2m2m.py flores)
                 fairseq-preprocess -s $PIVOT -t $TGT --testpref $PIVOT_DIR/data/$PIVOT/spm/$SRC.$PIVOT-$TGT --destdir $PIVOT_DIR/data/$PIVOT/bin/$SRC.$PIVOT-$TGT --srcdict $DICT --tgtdict $DICT --only-source 1>&2
                 fairseq-generate $PIVOT_DIR/data/$PIVOT/bin/$SRC.$PIVOT-$TGT --batch-size 32 --path $MODEL_PATH --fixed-dictionary $DICT -s $PIVOT -t $TGT --remove-bpe 'sentencepiece' --beam $BEAM --task translation_multi_simple_epoch --lang-pairs $FLORES_MODEL_PATH/language_pairs.txt --decoder-langtok --encoder-langtok src --gen-subset test --fp16 --dataset-impl mmap --distributed-world-size 1 --distributed-no-spawn --skip-invalid-size-inputs-valid-test --results-path $results_dir | tail -1
