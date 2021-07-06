@@ -13,7 +13,10 @@ BEAM=5
 PIVOT="en"
 PIVOT_DIR="pivoting"
 
-mkdir -p $PIVOT_DIR
+mkdir -p $PIVOT_DIR/data/$PIVOT
+mkdir -p $PIVOT_DIR/data/$PIVOT/spm
+mkdir -p $PIVOT_DIR/data/$PIVOT/bin
+mkdir -p $PIVOT_DIR/results/$PIVOT/
 
 LANGUAGES=$( ls $RESULTS_PATH | cut -f 3 -d "." | sort | uniq )
 
