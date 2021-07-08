@@ -11,7 +11,7 @@ def main():
     opt = parser.parse_args()
 
     for i in range(opt.num_shards):
-        makedirs(join(opt.out_dir, "shard-{}".format(i)))
+        makedirs(join(opt.out_dir, "shard-{}".format(i)), exist_ok=True)
     # we will be writing to num_shards files
     corpus_name = basename(opt.corpus)
     shards = [open(join(opt.out_dir, "shard-{}".format(i), corpus_name), "w")
