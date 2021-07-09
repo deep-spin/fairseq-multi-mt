@@ -734,6 +734,8 @@ class Trainer(object):
                         return None
                 else:
                     raise e
+            except TimeoutError:
+                raise RuntimeError
 
             if self.tpu and i < len(samples) - 1:
                 # tpu-comment: every XLA operation before marking step is

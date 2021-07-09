@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import bisect
-
+import logging
 import numpy as np
 from torch.utils.data.dataloader import default_collate
 
@@ -21,7 +21,7 @@ class ConcatDataset(FairseqDataset):
             s += curr_len
         return r
 
-    def __init__(self, datasets, sample_ratios=1):
+    def __init__(self, datasets, sample_ratios=1, homogeneous_batch=False):
         super(ConcatDataset, self).__init__()
         assert len(datasets) > 0, "datasets should not be an empty iterable"
         self.datasets = list(datasets)
@@ -30,6 +30,7 @@ class ConcatDataset(FairseqDataset):
         self.sample_ratios = sample_ratios
         self.cumulative_sizes = self.cumsum(self.datasets, sample_ratios)
         self.real_sizes = [len(d) for d in self.datasets]
+        self.homogeneous_batch = homogeneous_batch
 
     def __len__(self):
         return self.cumulative_sizes[-1]
@@ -88,22 +89,97 @@ class ConcatDataset(FairseqDataset):
         """
         Returns indices sorted by length. So less padding is needed.
         """
-        if isinstance(self.sizes, np.ndarray) and len(self.sizes.shape) > 1:
-            # special handling for concatenating lang_pair_datasets
-            indices = np.arange(len(self))
-            sizes = self.sizes
-            tgt_sizes = (
-                sizes[:, 1] if len(sizes.shape) > 0 and sizes.shape[1] > 1 else None
-            )
-            src_sizes = (
-                sizes[:, 0] if len(sizes.shape) > 0 and sizes.shape[1] > 1 else sizes
-            )
-            # sort by target length, then source length
-            if tgt_sizes is not None:
-                indices = indices[np.argsort(tgt_sizes[indices], kind="mergesort")]
-            return indices[np.argsort(src_sizes[indices], kind="mergesort")]
+        if not self.homogeneous_batch:
+            if isinstance(self.sizes, np.ndarray) and len(self.sizes.shape) > 1:
+                # special handling for concatenating lang_pair_datasets
+                indices = np.arange(len(self))
+                sizes = self.sizes
+                tgt_sizes = (
+                    sizes[:, 1] if len(sizes.shape) > 0 and sizes.shape[1] > 1 else None
+                )
+                src_sizes = (
+                    sizes[:, 0] if len(sizes.shape) > 0 and sizes.shape[1] > 1 else sizes
+                )
+                # sort by target length, then source length
+                if tgt_sizes is not None:
+                    indices = indices[np.argsort(tgt_sizes[indices], kind="mergesort")]
+                return indices[np.argsort(src_sizes[indices], kind="mergesort")]
+            else:
+                return np.argsort(self.sizes)
         else:
-            return np.argsort(self.sizes)
+            # Sort for each subset
+            sorted_indices = np.zeros(len(self.sizes), dtype=np.int64)
+            start_idx = 0
+            for d in self.datasets:
+                stop_idx = start_idx + len(d)
+                sorted_indices[start_idx:stop_idx] = np.argsort(self.sizes[start_idx:stop_idx]) + start_idx
+                start_idx += len(d)
+            
+            return sorted_indices
+
+    def batch_by_size(
+        self,
+        indices,
+        max_tokens=None,
+        max_sentences=None,
+        required_batch_size_multiple=1,
+    ):
+        if not self.homogeneous_batch:
+            return super().batch_by_size(
+                    indices=indices,
+                    max_tokens=max_tokens,
+                    max_sentences=max_sentences,
+                    required_batch_size_multiple=required_batch_size_multiple,
+                    )
+        else:
+        # If we want homogeneous batch, i.e., each batch contains only samples
+        # drawn from the same subset
+            return self._batch_by_size_homogeneous(
+                    indices=indices,
+                    max_tokens=max_tokens,
+                    max_sentences=max_sentences,
+                    required_batch_size_multiple=required_batch_size_multiple,
+                    )
+            
+
+    def _batch_by_size_homogeneous(
+        self,
+        indices,
+        max_tokens=None,
+        max_sentences=None,
+        required_batch_size_multiple=1,
+    ):
+        start_idx = 0
+        batch_samplers = [None]*len(self.datasets)
+        # num_samples = [len(s) for s in self.datasets]
+
+        for i, d in enumerate(self.datasets):
+            batch_samplers[i] = super().batch_by_size(
+                        indices=indices[start_idx : start_idx+len(d)],
+                        max_tokens=max_tokens,
+                        max_sentences=max_sentences,
+                        required_batch_size_multiple=required_batch_size_multiple,
+                        )
+            start_idx += len(d)
+        # Create a new batch sampler that choose randomly a batch among the above
+        # batch samplers
+        # iterators = list(map(iter, batch_samplers))
+        # while iterators:         
+        #     iterator = np.random.choice(iterators)
+        #     try:
+        #         yield next(iterator)
+        #     except StopIteration:
+        #         iterators.remove(iterator)
+        # iterators = [iter(s) for s in batch_samplers]
+        iterators = list(map(iter, batch_samplers))
+        # num_batches = [len(s) for s in batch_samplers]
+
+        while iterators:  
+            for i, iterator in enumerate(iterators):
+                try:
+                    yield next(iterator)
+                except StopIteration:  
+                    iterators.remove(iterator)
 
     def prefetch(self, indices):
         frm = 0

@@ -134,3 +134,11 @@ experimental/*
 
 # Weights and Biases logs
 wandb/
+
+# notes and slurm scripts
+*_configs_*
+*_lig*
+*_slurm*
+*_tools*
+*_notes*
+*_models*

@@ -1,7 +1,5 @@
 #!/bin/bash
-
-MODEL_PATH=$1
-CHECKPOINT_PATH=$2
+CHECKPOINT_PATH=$1
 
 # basic finetuning of the task 2 languages. This model uses the provided vocabulary
 # and updates all model parameters.
@@ -10,12 +8,11 @@ CHECKPOINT_PATH=$2
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
-    /mnt/data/bpop/wmt-multi/task2-data/bin/ \
-    --finetune-from-model /mnt/data/bpop/wmt-multi/flores101_mm100_175M/model.pt \
+    /home/bpop/fairseq-multi-mt/task2-data/bin/ \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
-    --langs $( cat /mnt/data/bpop/wmt-multi/flores101_mm100_175M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
+    --langs $( cat /home/bpop/flores101_mm100_175M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
     --lang-pairs "en-id,id-en,en-jv,jv-en,en-ms,ms-en,en-ta,ta-en,en-tl,tl-en,id-jv,jv-id,id-ms,ms-id,id-ta,ta-id,id-tl,tl-id,jv-ms,ms-jv,jv-ta,ta-jv,jv-tl,tl-jv,ms-ta,ta-ms,ms-tl,tl-ms,ta-tl,tl-ta" \
     --max-tokens 1024 \
     --decoder-normalize-before \
@@ -50,10 +47,20 @@ fairseq-train \
     --decoder-embed-dim 512 \
     --encoder-ffn-embed-dim 2048 \
     --decoder-ffn-embed-dim 2048 \
-    --encoder-layerdrop 0.05 \
-    --decoder-layerdrop 0.05 \
+    --encoder-layerdrop 0.0 \
+    --decoder-layerdrop 0.0 \
     --share-decoder-input-output-embed \
     --share-all-embeddings \
     --fp16 \
     --memory-efficient-fp16 \
-    --ddp-backend no_c10d
+    --ddp-backend no_c10d \
+    --find-unused-parameters \
+    --adapter-enc-dim 1024 \
+    --adapter-enc-type 'per_lang' \
+    --adapter-dec-dim 1024 \
+    --adapter-dec-type 'per_lang' \
+    --finetune-enc-modules adapter \
+    --finetune-dec-modules adapter \
+    --load-pretrained-encoder-from /home/bpop/flores101_mm100_175M/model.pt \
+    --load-pretrained-decoder-from /home/bpop/flores101_mm100_175M/model.pt \
+    --homogeneous-batch
