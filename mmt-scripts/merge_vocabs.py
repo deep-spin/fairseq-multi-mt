@@ -7,9 +7,10 @@ import sys
 from collections import Counter
 import argparse
 
-argparse = argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 parser.add_argument("--in_format", default="tab")
-parser.add_argument("out_format", default="tab")
+parser.add_argument("--out_format", default="tab")
+parser.add_argument("--min_count", default=1, type=int)
 opt = parser.parse_args()
 
 total_counts = Counter()
@@ -22,5 +23,7 @@ for line in sys.stdin:
     total_counts[word] += count
 
 for word, count in total_counts.most_common():
+    if count < opt.min_count:
+        break
     sys.stdout.write(output_sep.join([word, str(count)]) + "\n")
 
