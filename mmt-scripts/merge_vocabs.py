@@ -20,7 +20,7 @@ output_sep = "\t" if opt.out_format == "tab" else " "
 
 for line in sys.stdin:
     word, count = line.rstrip().split(input_sep)
-    total_counts[word] += count
+    total_counts[word] += int(count)
 
 for word, count in total_counts.most_common():
     if count < opt.min_count:
