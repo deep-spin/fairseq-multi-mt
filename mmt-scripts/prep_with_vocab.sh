@@ -26,7 +26,7 @@ TESTPREF=$DATA_DIR/spm/test.$LANG1-$LANG2
 # segment corpora and write them to DATA_DIR
 # train corpora are specific to each language PAIR (en data is different for en-ta than en-sr, for example)
 for lang in $LANG1 $LANG2 ; do
-    cat $TRAIN_PATH/*$LANG1-$LANG2.$lang | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH/sentencepiece.bpe.model > $TRAINPREF.$lang
+    cat $TRAIN_PATH/*$LANG1-$LANG2.$lang | spm_encode --model $MODEL_PATH/sentencepiece.bpe.model --vocabulary $VOCAB_PATH > $TRAINPREF.$lang
 done
 
 # dev/devtest data are NOT pair-dependent (it's the same English set no matter what the other language is)
@@ -34,7 +34,7 @@ for lang in $LANG1 $LANG2 ; do
     flores_lang=$(echo $lang | python $SCRIPTS_PATH/flores2m2m.py flores)
     for split in dev devtest ; do
         outsplit=$(echo $split | sed "s/devtest/test/g")
-        cat $FLORES_PATH/$split/$flores_lang.$split | python $FAIRSEQ_PATH/scripts/spm_encode.py --model $MODEL_PATH/sentencepiece.bpe.model > $DATA_DIR/spm/$outsplit.$LANG1-$LANG2.$lang
+        cat $FLORES_PATH/$split/$flores_lang.$split | spm_encode --model $MODEL_PATH/sentencepiece.bpe.model --vocabulary $VOCAB_PATH > $DATA_DIR/spm/$outsplit.$LANG1-$LANG2.$lang
     done
 done
 
