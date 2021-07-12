@@ -24,6 +24,7 @@ def main():
     V, d = src_emb_matrix.size()
 
     sys.stderr.write("Embedding matrix size {}, vocab size {}\n".format(V, len(vocab)))
+    sys.stdout.write("{} {}\n".format(V, d))
     for i in range(V):
         word_type = vocab[i]
         vec = [str(x_j) for x_j in src_emb_matrix[i].tolist()]
