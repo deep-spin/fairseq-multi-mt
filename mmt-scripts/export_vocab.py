@@ -22,7 +22,7 @@ def main():
     src_emb_matrix = m['model']['encoder.embed_tokens.weight']
     V, d = src_emb_matrix.size()
 
-    sys.stderr.write("Embedding matrix size {}, vocab size P{\n".format(V, len(vocab)))
+    sys.stderr.write("Embedding matrix size {}, vocab size {}\n".format(V, len(vocab)))
     for i in range(V):
         word_type = vocab[i]
         vec = [str(x_j) for x_j in src_emb_matrix[i].tolist()]
