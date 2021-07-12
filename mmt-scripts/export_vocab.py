@@ -6,8 +6,9 @@ import torch
 
 
 def read_vocab(path):
+    specials = ["<s>", "<pad>", "</s>", "<unk>"]
     with open(path) as f:
-        return [line.rstrip().split(" ")[0] for line in f]
+        return specials + [line.rstrip().split(" ")[0] for line in f]
 
 
 def main():
