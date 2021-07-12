@@ -31,15 +31,21 @@ def main():
     opt = parser.parse_args()
 
     emb_matrix = read_embeddings(opt.embeddings)
+    language_embeddings = {k: v for k, v in emb_matrix.items() if k.startswith("__")}
 
     # so, the embeddings are in a huge file, where each line (except the first)
     #
+    sys.stdout.write("stupid obligatory header\n")
     for special in ["<s>", "<pad>", "</s>", "<unk>"]:
         sys.stdout.write(emb_matrix[special])
     with open(opt.new_dict) as f:
         for line in f:
             word_type = line.split(" ", 1)[0]
             sys.stdout.write(emb_matrix[word_type])
+        for k, v in language_embeddings.items():
+            # make sure not to exclude the language embeddings, which are
+            # included in the flores model's dict but not included in
+            sys.stdout.write(v)
 
 
 if __name__ == "__main__":
