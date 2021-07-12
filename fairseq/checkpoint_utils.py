@@ -753,6 +753,7 @@ def load_pretrained_component_from_model(
     component: Union[FairseqEncoder, FairseqDecoder],
     checkpoint: Union[str, dict],
     strict=True,
+    discard_pretrained_emb=False
 ):
     """
     Load a pretrained FairseqEncoder or FairseqDecoder from checkpoint into the
@@ -780,7 +781,8 @@ def load_pretrained_component_from_model(
         if key.startswith(component_type):
             # encoder.input_layers.0.0.weight --> input_layers.0.0.weight
             component_subkey = key[len(component_type) + 1 :]
-            component_state_dict[component_subkey] = state["model"][key]
+            if not discard_pretrained_emb or ("embed_tokens" not in key and "output_projection" not in key):
+                component_state_dict[component_subkey] = state["model"][key]
     component.load_state_dict(component_state_dict, strict=strict)
     return component
 

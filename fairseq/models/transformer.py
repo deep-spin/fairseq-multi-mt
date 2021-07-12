@@ -220,10 +220,20 @@ class TransformerModel(FairseqEncoderDecoderModel):
             help="model to take encoder weights from (for initialization)",
         )
         parser.add_argument(
+            "--discard-pretrained-encoder-embeddings",
+            action="store_true",
+            help="if True, discard pretrained encoder embedding matrix"
+        )
+        parser.add_argument(
             "--load-pretrained-decoder-from",
             type=str,
             metavar="STR",
             help="model to take decoder weights from (for initialization)",
+        )
+        parser.add_argument(
+            "--discard-pretrained-decoder-embeddings",
+            action="store_true",
+            help="if True, discard pretrained encoder embedding matrix"
         )
         parser.add_argument(
             "--finetune-modules",
@@ -358,13 +368,19 @@ class TransformerModel(FairseqEncoderDecoderModel):
         encoder = TransformerEncoder(args, src_dict, embed_tokens)
 
         pretraining_path = getattr(args, "load_pretrained_encoder_from", None)
+        discard_pretrained_emb = getattr(
+            args, "discard_pretrained_encoder_embeddings", False
+        )
+        
         if pretraining_path is not None:
             if Path(pretraining_path).exists():  # used to be a warning
-                strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False)
+                strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False) and not discard_pretrained_emb
 
                 encoder = checkpoint_utils.load_pretrained_component_from_model(
-                    component=encoder, checkpoint=pretraining_path,
-                    strict=strict
+                    component=encoder,
+                    checkpoint=pretraining_path,
+                    strict=strict,
+                    discard_pretrained_emb=discard_pretrained_emb
                 )
         return encoder
 
@@ -377,37 +393,54 @@ class TransformerModel(FairseqEncoderDecoderModel):
             no_encoder_attn=getattr(args, "no_cross_attention", False),
         )
 
-        if getattr(args, "load_pretrained_decoder_from", None):
-            if os.path.isfile(args.load_pretrained_decoder_from):
+        pretraining_path = getattr(args, "load_pretrained_decoder_from", None)
+        if pretraining_path is not None:
+            discard_pretrained_emb = getattr(
+                args, "discard_pretrained_encoder_embeddings", False
+            )
+            
+            if os.path.isfile(pretraining_path):
                 # Load the checkpoint and check for potential dimension mismatches
-                state_dict = checkpoint_utils.load_checkpoint_to_cpu(args.load_pretrained_decoder_from)
+                state_dict = checkpoint_utils.load_checkpoint_to_cpu(pretraining_path)
 
-                strict = True
-                # Check for dimension mismatches
-                ckpt_embed_dim = state_dict['model']['decoder.embed_tokens.weight'].shape[0]
-                embed_dim = decoder.embed_tokens.weight.shape[0]
-                if ckpt_embed_dim != embed_dim:
-                    del state_dict['model']['decoder.embed_tokens.weight']
-                    strict = False
-                ckpt_output_dim = None
-                if 'decoder.output_projection.weight' in state_dict['model']:
-                    ckpt_output_dim = state_dict['model']['decoder.output_projection.weight'].shape[0]
-                output_dim = decoder.output_projection.weight.shape[0]
-                if ckpt_output_dim != output_dim:
+                if not discard_pretrained_emb:
+                    # just do everything the way it used to be
+
+                    strict = True
+                    # Check for dimension mismatches
+                    ckpt_embed_dim = state_dict['model']['decoder.embed_tokens.weight'].shape[0]
+                    embed_dim = decoder.embed_tokens.weight.shape[0]
+                    if ckpt_embed_dim != embed_dim:
+                        del state_dict['model']['decoder.embed_tokens.weight']
+                        strict = False
+                    ckpt_output_dim = None
                     if 'decoder.output_projection.weight' in state_dict['model']:
-                        del state_dict['model']['decoder.output_projection.weight']
-                    strict = False
+                        ckpt_output_dim = state_dict['model']['decoder.output_projection.weight'].shape[0]
+                    output_dim = decoder.output_projection.weight.shape[0]
+                    if ckpt_output_dim != output_dim:
+                        if 'decoder.output_projection.weight' in state_dict['model']:
+                            del state_dict['model']['decoder.output_projection.weight']
+                        strict = False
 
-                args.use_mbart = False
-                strict = not bool(args.adapter_keys) and strict and not args.use_mbart
-                if not strict:
-                    logging.warning(f'| strict mode when loading decoder: {strict}')
+                    args.use_mbart = False
+                    strict = not bool(args.adapter_keys) and strict and not args.use_mbart
+                    if not strict:
+                        logging.warning(f'| strict mode when loading decoder: {strict}')
 
-                decoder = checkpoint_utils.load_pretrained_component_from_model(
-                    component=decoder,
-                    checkpoint=state_dict,
-                    strict=strict
-                )
+                    decoder = checkpoint_utils.load_pretrained_component_from_model(
+                        component=decoder,
+                        checkpoint=state_dict,
+                        strict=strict
+                    )
+                else:
+                    # build a pretrained decoder
+                    strict = False  # because the pretrained embeddings are discarded
+
+                    decoder = checkpoint_utils.load_pretrained_component_from_model(
+                        component=decoder,
+                        checkpoint=pretraining_path,
+                        strict=strict
+                    )
         return decoder
 
     # TorchScript doesn't support optional arguments with variable length (**kwargs).
