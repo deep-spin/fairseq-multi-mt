@@ -319,6 +319,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         def _freeze(module):
             for n, p in module.named_parameters():
                 p.requires_grad = False
+
         def _unfreeze(module, finetune_modules=None):
             if finetune_modules:
                 for n, p in module.named_parameters():
@@ -337,11 +338,11 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
         if finetune_enc_modules or finetune_dec_modules:
             if finetune_enc_modules:
-                finetune_enc_modules = finetune_enc_modules.split(',') \
-                    if not isinstance(finetune_enc_modules, list) else finetune_enc_modules
+                if not isinstance(finetune_enc_modules, list):
+                    finetune_enc_modules = finetune_enc_modules.split(',')
             if finetune_dec_modules:
-                finetune_dec_modules = finetune_dec_modules.split(',') \
-                    if not isinstance(finetune_dec_modules, list) else finetune_dec_modules
+                if not isinstance(finetune_dec_modules, list):
+                    finetune_dec_modules = finetune_dec_modules.split(',')
             logging.info("Freeze/Un-freeze encoder...")  # could be described better
             _freeze(encoder)
             _unfreeze(encoder, finetune_enc_modules)
@@ -373,15 +374,16 @@ class TransformerModel(FairseqEncoderDecoderModel):
         )
         
         if pretraining_path is not None:
-            if Path(pretraining_path).exists():  # used to be a warning
-                strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False) and not discard_pretrained_emb
+            assert Path(pretraining_path).exists(), \
+                "encoder pretrained path does not exist"
+            strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False) and not discard_pretrained_emb
 
-                encoder = checkpoint_utils.load_pretrained_component_from_model(
-                    component=encoder,
-                    checkpoint=pretraining_path,
-                    strict=strict,
-                    discard_pretrained_emb=discard_pretrained_emb
-                )
+            encoder = checkpoint_utils.load_pretrained_component_from_model(
+                component=encoder,
+                checkpoint=pretraining_path,
+                strict=strict,
+                discard_pretrained_emb=discard_pretrained_emb
+            )
         return encoder
 
     @classmethod
