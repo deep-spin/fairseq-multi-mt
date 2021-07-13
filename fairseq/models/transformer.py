@@ -396,7 +396,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         pretraining_path = getattr(args, "load_pretrained_decoder_from", None)
         if pretraining_path is not None:
             discard_pretrained_emb = getattr(
-                args, "discard_pretrained_encoder_embeddings", False
+                args, "discard_pretrained_decoder_embeddings", False
             )
             
             if os.path.isfile(pretraining_path):
