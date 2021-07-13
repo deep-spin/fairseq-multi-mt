@@ -439,7 +439,8 @@ class TransformerModel(FairseqEncoderDecoderModel):
                     decoder = checkpoint_utils.load_pretrained_component_from_model(
                         component=decoder,
                         checkpoint=pretraining_path,
-                        strict=strict
+                        strict=strict,
+                        discard_pretrained_emb=discard_pretrained_emb
                     )
         return decoder
 
