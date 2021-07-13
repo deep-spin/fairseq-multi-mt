@@ -4,7 +4,7 @@ FLORES_MODEL_PATH=$2
 DATA_BIN_PATH=$3
 RESULTS_PATH=$4
 DICT=$FLORES_MODEL_PATH/dict.txt
-FLORES_PATH=/home/bpop/flores101_dataset/
+FLORES_PATH=/mnt/data/bpop/wmt-multi/flores101_dataset/
 SCRIPTS_PATH=/home/bpop/fairseq-multi-mt/mmt-scripts/
 BEAM=5
 
