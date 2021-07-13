@@ -8,11 +8,11 @@ CHECKPOINT_PATH=$1
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
-    /home/bpop/fairseq-multi-mt/task2-data/bin/ \
+    /home/bpop/task2-data/bin/ \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
-    --langs $( cat /home/bpop/flores101_mm100_175M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
+    --langs $( cat /home/bpop/flores101_mm100_615M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
     --lang-pairs "en-tl" \
     --max-tokens 1024 \
     --decoder-normalize-before \
@@ -40,12 +40,12 @@ fairseq-train \
     --log-interval 10 \
     --patience 10 \
     --arch transformer_wmt_en_de_big \
-    --encoder-layers 6 \
-    --decoder-layers 6 \
-    --encoder-embed-dim 512 \
-    --decoder-embed-dim 512 \
-    --encoder-ffn-embed-dim 2048 \
-    --decoder-ffn-embed-dim 2048 \
+    --encoder-layers 12 \
+    --decoder-layers 12 \
+    --encoder-embed-dim 1024 \
+    --decoder-embed-dim 1024 \
+    --encoder-ffn-embed-dim 4096 \
+    --decoder-ffn-embed-dim 4096 \
     --encoder-layerdrop 0.0 \
     --decoder-layerdrop 0.0 \
     --share-decoder-input-output-embed \
@@ -60,6 +60,8 @@ fairseq-train \
     --adapter-dec-type 'per_lang' \
     --finetune-enc-modules adapter \
     --finetune-dec-modules adapter \
-    --load-pretrained-encoder-from /home/bpop/flores101_mm100_175M/model.pt \
-    --load-pretrained-decoder-from /home/bpop/flores101_mm100_175M/model.pt \
+    --load-pretrained-encoder-from /home/bpop/flores101_mm100_615M/model.pt \
+    --load-pretrained-decoder-from /home/bpop/flores101_mm100_615M/model.pt \
+    --discard-pretrained-encoder-embeddings \
+    --discard-pretrained-decoder-embeddings \
     --homogeneous-batch
