@@ -487,9 +487,12 @@ class TransformerModel(FairseqEncoderDecoderModel):
         net_output: Tuple[Tensor, Optional[Dict[str, List[Optional[Tensor]]]]],
         log_probs: bool,
         sample: Optional[Dict[str, Tensor]] = None,
+        alpha=1.0
     ):
         """Get normalized probabilities (or log probs) from a net's output."""
-        return self.get_normalized_probs_scriptable(net_output, log_probs, sample)
+        return self.get_normalized_probs_scriptable(
+            net_output, log_probs, sample, alpha=alpha
+        )
 
 
 class TransformerEncoder(FairseqEncoder):
