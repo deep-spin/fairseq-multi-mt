@@ -37,6 +37,7 @@ class SequenceGenerator(nn.Module):
         symbols_to_strip_from_output=None,
         lm_model=None,
         lm_weight=1.0,
+        alpha=1.0
     ):
         """Generates translations of a given source sentence.
 
@@ -67,6 +68,7 @@ class SequenceGenerator(nn.Module):
             self.model = models
         else:
             self.model = EnsembleModel(models)
+        self.alpha = alpha
         self.tgt_dict = tgt_dict
         self.pad = tgt_dict.pad()
         self.unk = tgt_dict.unk()
@@ -333,7 +335,9 @@ class SequenceGenerator(nn.Module):
                 encoder_outs,
                 incremental_states,
                 self.temperature,
+                alpha=self.alpha
             )
+            lprobs.masked_fill_(lprobs == float('-inf'), -65503)  # sparse search workaround?
 
             if self.lm_model is not None:
                 lm_out = self.lm_model(tokens[:, : step + 1])
@@ -773,6 +777,7 @@ class EnsembleModel(nn.Module):
         encoder_outs: List[Dict[str, List[Tensor]]],
         incremental_states: List[Dict[str, Dict[str, Optional[Tensor]]]],
         temperature: float = 1.0,
+        alpha: float = 1.0
     ):
         log_probs = []
         avg_attn: Optional[Tensor] = None
@@ -812,7 +817,7 @@ class EnsembleModel(nn.Module):
                 None if decoder_len <= 1 else decoder_out[1],
             )
             probs = model.get_normalized_probs(
-                decoder_out_tuple, log_probs=True, sample=None
+                decoder_out_tuple, log_probs=True, sample=None, alpha=alpha
             )
             probs = probs[:, -1, :]
             if self.models_size == 1:

@@ -717,6 +717,10 @@ class FairseqBMUFConfig(FairseqDataclass):
 
 @dataclass
 class GenerationConfig(FairseqDataclass):
+    alpha: float = field(
+        default=1.0,
+        metadata={"help": "entmax alpha for generation"}
+    )
     beam: int = field(
         default=5, metadata={"help": "beam size"},
     )

@@ -23,6 +23,8 @@ from fairseq.models import FairseqDecoder, FairseqEncoder
 from omegaconf import DictConfig
 from torch import Tensor
 
+import entmax
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +66,12 @@ class BaseFairseqModel(nn.Module):
         net_output: Tuple[Tensor, Optional[Dict[str, List[Optional[Tensor]]]]],
         log_probs: bool,
         sample: Optional[Dict[str, Tensor]] = None,
+        alpha=1.0
     ):
         """Get normalized probabilities (or log probs) from a net's output."""
-        return self.get_normalized_probs_scriptable(net_output, log_probs, sample)
+        return self.get_normalized_probs_scriptable(
+            net_output, log_probs, sample, alpha=alpha
+        )
 
     # TorchScript doesn't support super() method so that the scriptable Subclass
     # can't access the base class model in Torchscript.
@@ -77,10 +82,11 @@ class BaseFairseqModel(nn.Module):
         net_output: Tuple[Tensor, Optional[Dict[str, List[Optional[Tensor]]]]],
         log_probs: bool,
         sample: Optional[Dict[str, Tensor]] = None,
+        alpha=1.0
     ):
         """Scriptable helper function for get_normalized_probs in ~BaseFairseqModel"""
         if hasattr(self, "decoder"):
-            return self.decoder.get_normalized_probs(net_output, log_probs, sample)
+            return self.decoder.get_normalized_probs(net_output, log_probs, sample, alpha=alpha)
         elif torch.is_tensor(net_output):
             # syntactic sugar for simple models which don't have a decoder
             # (e.g., the classification tutorial)

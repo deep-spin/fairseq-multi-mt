@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 import torch.nn as nn
 from fairseq import utils
 from torch import Tensor
+import entmax
 
 
 class FairseqDecoder(nn.Module):
@@ -62,9 +63,12 @@ class FairseqDecoder(nn.Module):
         net_output: Tuple[Tensor, Optional[Dict[str, List[Optional[Tensor]]]]],
         log_probs: bool,
         sample: Optional[Dict[str, Tensor]] = None,
+        alpha: float = 1.0
     ):
         """Get normalized probabilities (or log probs) from a net's output."""
-        return self.get_normalized_probs_scriptable(net_output, log_probs, sample)
+        return self.get_normalized_probs_scriptable(
+            net_output, log_probs, sample, alpha
+        )
 
     # TorchScript doesn't support super() method so that the scriptable Subclass
     # can't access the base class model in Torchscript.
@@ -75,10 +79,12 @@ class FairseqDecoder(nn.Module):
         net_output: Tuple[Tensor, Optional[Dict[str, List[Optional[Tensor]]]]],
         log_probs: bool,
         sample: Optional[Dict[str, Tensor]] = None,
+        alpha: float = 1.0
     ):
         """Get normalized probabilities (or log probs) from a net's output."""
 
         if hasattr(self, "adaptive_softmax") and self.adaptive_softmax is not None:
+            assert alpha == 1  # no adaptive entmax
             if sample is not None:
                 assert "target" in sample
                 target = sample["target"]
@@ -88,10 +94,23 @@ class FairseqDecoder(nn.Module):
             return out.exp_() if not log_probs else out
 
         logits = net_output[0]
-        if log_probs:
-            return utils.log_softmax(logits, dim=-1, onnx_trace=self.onnx_trace)
+        if alpha == 1:
+            if log_probs:
+                return utils.log_softmax(logits, dim=-1, onnx_trace=self.onnx_trace)
+            else:
+                return utils.softmax(logits, dim=-1, onnx_trace=self.onnx_trace)
         else:
-            return utils.softmax(logits, dim=-1, onnx_trace=self.onnx_trace)
+            # entmax
+            if alpha == 1.5:
+                # entmax 1.5
+                probs = entmax.entmax15(logits, dim=-1)
+            elif alpha == 2:
+                # sparsemax
+                probs = entmax.sparsemax(logits, dim=-1)
+            else:
+                probs = entmax.entmax_bisect(logits, alpha=alpha, dim=-1)
+
+            return probs.log() if log_probs else probs
 
     def max_positions(self):
         """Maximum input length supported by the decoder."""
