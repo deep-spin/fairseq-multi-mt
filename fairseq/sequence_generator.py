@@ -37,7 +37,7 @@ class SequenceGenerator(nn.Module):
         symbols_to_strip_from_output=None,
         lm_model=None,
         lm_weight=1.0,
-        alpha=1.0
+        entmax_alpha=1.0
     ):
         """Generates translations of a given source sentence.
 
@@ -68,7 +68,7 @@ class SequenceGenerator(nn.Module):
             self.model = models
         else:
             self.model = EnsembleModel(models)
-        self.alpha = alpha
+        self.alpha = entmax_alpha
         self.tgt_dict = tgt_dict
         self.pad = tgt_dict.pad()
         self.unk = tgt_dict.unk()

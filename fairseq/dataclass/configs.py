@@ -717,7 +717,7 @@ class FairseqBMUFConfig(FairseqDataclass):
 
 @dataclass
 class GenerationConfig(FairseqDataclass):
-    alpha: float = field(
+    entmax_alpha: float = field(
         default=1.0,
         metadata={"help": "entmax alpha for generation"}
     )
