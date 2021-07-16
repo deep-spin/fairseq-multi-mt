@@ -337,7 +337,9 @@ class SequenceGenerator(nn.Module):
                 self.temperature,
                 alpha=self.alpha
             )
-            lprobs.masked_fill_(lprobs == float('-inf'), -65503)  # sparse search workaround?
+            # removing this log prob masking, but leaving evidence of it for
+            # future reference:
+            # lprobs.masked_fill_(lprobs == float('-inf'), -65503)
 
             if self.lm_model is not None:
                 lm_out = self.lm_model(tokens[:, : step + 1])
@@ -349,13 +351,16 @@ class SequenceGenerator(nn.Module):
 
             lprobs[lprobs != lprobs] = torch.tensor(-math.inf).to(lprobs)
 
-            lprobs[:, self.pad] = -math.inf  # never select pad
+            # removing the line that explicitly zeroes out pad (not sure if
+            # if makes a difference):
+            # lprobs[:, self.pad] = -math.inf  # never select pad
             lprobs[:, self.unk] -= self.unk_penalty  # apply unk penalty
 
             # handle max length constraint
             if step >= max_len:
                 lprobs[:, : self.eos] = -math.inf
                 lprobs[:, self.eos + 1 :] = -math.inf
+                lprobs[:, eos] = 0  # added from MRT repo
 
             # handle prefix tokens (possibly with different lengths)
             if (
@@ -366,7 +371,7 @@ class SequenceGenerator(nn.Module):
                 lprobs, tokens, scores = self._prefix_tokens(
                     step, lprobs, scores, tokens, prefix_tokens, beam_size
                 )
-            elif step < self.min_len:
+            elif step > 0 and step < self.min_len:
                 # minimum length constraint (does not apply if using prefix_tokens)
                 lprobs[:, self.eos] = -math.inf
 
