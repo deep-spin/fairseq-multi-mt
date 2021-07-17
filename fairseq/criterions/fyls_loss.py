@@ -63,7 +63,7 @@ class FenchelYoungLabelSmoothingLossCriterion(FairseqCriterion):
         )
         logging_output = {
             "loss": loss.data,
-            "loss_ystar": loss_ystar.data
+            "loss_ystar": loss_ystar.data,
             "ntokens": sample["ntokens"],
             "nsentences": sample["target"].size(0),
             "sample_size": sample_size,
