@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from entmax import Entmax15Loss, SparsemaxLoss, EntmaxBisectLoss
 
+from torch.cuda.amp import autocast
 import torch.nn as nn
 from fairseq import metrics
 from fairseq.criterions import FairseqCriterion, register_criterion
@@ -72,9 +73,9 @@ class FenchelYoungLabelSmoothingLossCriterion(FairseqCriterion):
 
     def _compute_smoothing(self, logits, target, reduce=True):
         z_ystar = logits.gather(1, target.unsqueeze(1)).squeeze(1)
-
         if 0 <= self.padding_idx < logits.size(-1):
-            z_sum = logits.sum(dim=1) - logits[:, self.padding_idx]
+            with autocast():
+                z_sum = logits.sum(dim=1) - logits[:, self.padding_idx]
             z_bar = z_sum / (logits.size(-1) - 1)
         else:
             z_bar = logits.mean(dim=1)
