@@ -211,7 +211,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
 
             args.adapter_keys = adapter_keys
 
-            if args.adapter_keys and len(tgt_lang_tags) > 1:
+            if args.adapter_keys and len(lang_tags) > 1:
                 assert args.homogeneous_batch
             logging.info(f'| lang_tags (src and tgt): {lang_tags}')
             logging.info(f'| adapter_keys: {args.adapter_keys}')
