@@ -15,8 +15,7 @@ fairseq-train \
     --lang-pairs "en-id,id-en,en-jv,jv-en,en-ms,ms-en,en-ta,ta-en,en-tl,tl-en,id-jv,jv-id,id-ms,ms-id,id-ta,ta-id,id-tl,tl-id,jv-ms,ms-jv,jv-ta,ta-jv,jv-tl,tl-jv,ms-ta,ta-ms,ms-tl,tl-ms,ta-tl,tl-ta" \
     --max-tokens 1024 \
     --decoder-normalize-before \
-    --sampling-method temperature \
-    --sampling-temperature 5 \
+    --sampling-method uniform \
     --encoder-langtok src \
     --decoder-langtok \
     --criterion entmax_loss \
