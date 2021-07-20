@@ -304,14 +304,30 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         seq_gen_cls=None,
         extra_gen_cls_kwargs=None,
     ):
-        if not getattr(args, "keep_inference_langtok", False):
+        keep_inference_langtok = getattr(args, "keep_inference_langtok", False)
+        if not keep_inference_langtok:
             _, tgt_langtok_spec = self.args.langtoks["main"]
             if tgt_langtok_spec:
+                # target_lang might be None (at train time)
+                # but I don't think we need it
+                tgt_lang_toks = {
+                    self.data_manager.get_decoder_langtok(tgt_lang, tgt_langtok_spec)
+                    for tgt_lang in self.target_langs
+                }
+                if self.args.target_lang is not None:
+                    # at generation time (this might not be necessary)
+                    tgt_lang_tok = self.data_manager.get_decoder_langtok(
+                        self.args.target_lang, tgt_langtok_spec
+                    )
+                    tgt_lang_toks.add(tgt_lang_tok)
+                '''
                 tgt_lang_tok = self.data_manager.get_decoder_langtok(
                     self.args.target_lang, tgt_langtok_spec
                 )
+                '''
                 extra_gen_cls_kwargs = extra_gen_cls_kwargs or {}
-                extra_gen_cls_kwargs["symbols_to_strip_from_output"] = {tgt_lang_tok}
+                # extra_gen_cls_kwargs["symbols_to_strip_from_output"] = {tgt_lang_tok}
+                extra_gen_cls_kwargs["symbols_to_strip_from_output"] = tgt_lang_toks
 
         return super().build_generator(
             models, args, seq_gen_cls=None, extra_gen_cls_kwargs=extra_gen_cls_kwargs
