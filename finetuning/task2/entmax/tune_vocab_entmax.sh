@@ -1,8 +1,8 @@
+#!/bin/bash
 ALPHA=$1
 CHECKPOINT_PATH=$2
 
-# The question with this model is, can we train a model with monolingual adapters
-# on all language pairs using the reduced-vocabulary checkpoint?
+# I think it might be better to do this with a 
 
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
@@ -16,7 +16,8 @@ fairseq-train \
     --lang-pairs "en-id,id-en,en-jv,jv-en,en-ms,ms-en,en-ta,ta-en,en-tl,tl-en,id-jv,jv-id,id-ms,ms-id,id-ta,ta-id,id-tl,tl-id,jv-ms,ms-jv,jv-ta,ta-jv,jv-tl,tl-jv,ms-ta,ta-ms,ms-tl,tl-ms,ta-tl,tl-ta" \
     --max-tokens 1024 \
     --decoder-normalize-before \
-    --sampling-method uniform \
+    --sampling-method temperature \
+    --sampling-temperature 5 \
     --encoder-langtok src \
     --decoder-langtok \
     --criterion entmax_loss \
@@ -24,9 +25,8 @@ fairseq-train \
     --optimizer adam \
     --adam-eps 1e-08 \
     --adam-betas '(0.9, 0.98)' \
-    --lr-scheduler inverse_sqrt \
+    --lr-scheduler fixed \  # NOTE!
     --lr 3e-05 \
-    --warmup-updates 4000 \
     --max-update 100000 \
     --dropout 0.3 \
     --attention-dropout 0.1 \
@@ -54,12 +54,8 @@ fairseq-train \
     --memory-efficient-fp16 \
     --ddp-backend no_c10d \
     --find-unused-parameters \
-    --adapter-enc-dim 1024 \
-    --adapter-enc-type 'per_lang' \
-    --adapter-dec-dim 1024 \
-    --adapter-dec-type 'per_lang' \
-    --finetune-enc-modules adapter \
-    --finetune-dec-modules adapter \
+    --finetune-enc-modules embed_tokens \
+    --finetune-dec-modules embed_tokens \
     --load-pretrained-encoder-from /mnt/data/bpop/wmt-multi/flores_big_task2_vocab/model.pt \
     --load-pretrained-decoder-from /mnt/data/bpop/wmt-multi/flores_big_task2_vocab/model.pt \
     --homogeneous-batch \
