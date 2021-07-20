@@ -2,6 +2,8 @@
 ALPHA=$1
 CHECKPOINT_PATH=$2
 
+GEN_ARGS=$( echo '{"beam": 1, "entmax-alpha": ALPHAVAL}' | sed "s/ALPHAVAL/$ALPHA/g" )
+
 # I think it might be better to do this with a 
 
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
@@ -25,7 +27,7 @@ fairseq-train \
     --optimizer adam \
     --adam-eps 1e-08 \
     --adam-betas '(0.9, 0.98)' \
-    --lr-scheduler fixed \  # NOTE!
+    --lr-scheduler fixed \
     --lr 3e-05 \
     --max-update 100000 \
     --dropout 0.3 \
@@ -60,5 +62,5 @@ fairseq-train \
     --load-pretrained-decoder-from /mnt/data/bpop/wmt-multi/flores_big_task2_vocab/model.pt \
     --homogeneous-batch \
     --eval-bleu \
-    --eval-bleu-args '{"beam": 1, "entmax-alpha": $ALPHA}' \
+    --eval-bleu-args $GEN_ARGS \
     --eval-bleu-remove-bpe "sentencepiece"
