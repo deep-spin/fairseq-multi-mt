@@ -613,10 +613,14 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         return epoch_iter
 
     def _inference_with_bleu(self, generator, sample, model):
+        """
+        Note that this is for inference at validation time, i.e. when the
+        target is available
+        """
         import sacrebleu
 
         def decode(toks, escape_unk=False):
-            s = self.tgt_dict.string(
+            s = self.target_dictionary.string(
                 toks.int().cpu(),
                 self.args.eval_bleu_remove_bpe,
                 # The default unknown string in fairseq is `<unk>`, but
@@ -631,7 +635,8 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
             return s
 
         # I suspect that we will want prefix tokens because of langid.
-        gen_out = self.inference_step(generator, [model], sample, prefix_tokens=None)
+        target_langid = sample["target"][:, 0].unsqueeze(1)
+        gen_out = self.inference_step(generator, [model], sample, prefix_tokens=target_langid)
         hyps, refs = [], []
         for i in range(len(gen_out)):
             hyps.append(decode(gen_out[i][0]["tokens"]))
