@@ -1,7 +1,4 @@
-ALPHA=$1
-CHECKPOINT_PATH=$2
-
-GEN_ARGS=$( echo '{"beam": 1, "entmax-alpha": ALPHAVAL}' | sed "s/ALPHAVAL/$ALPHA/g" )
+CHECKPOINT_PATH=$1
 
 # The question with this model is, can we train a model with monolingual adapters
 # on all language pairs using the reduced-vocabulary checkpoint?
@@ -22,7 +19,7 @@ fairseq-train \
     --encoder-langtok src \
     --decoder-langtok \
     --criterion entmax_loss \
-    --loss-alpha $ALPHA \
+    --loss-alpha 1.5 \
     --optimizer adam \
     --adam-eps 1e-08 \
     --adam-betas '(0.9, 0.98)' \
@@ -66,5 +63,5 @@ fairseq-train \
     --load-pretrained-decoder-from /mnt/data/bpop/wmt-multi/flores_big_task2_vocab/model.pt \
     --homogeneous-batch \
     --eval-bleu \
-    --eval-bleu-args $GEN_ARGS \
+    --eval-bleu-args '{"beam": 1, "entmax-alpha": 1.5}' \
     --eval-bleu-remove-bpe "sentencepiece"
