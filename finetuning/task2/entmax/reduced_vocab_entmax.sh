@@ -9,7 +9,7 @@ CHECKPOINT_PATH=$2
 fairseq-train \
     /mnt/data/bpop/wmt-multi/filtered-data/task2/small-vocab/bin/ \
     --save-dir $CHECKPOINT_PATH \
-    --tensorboard-log-dir $CHECKPOINT_PATH/tensorboard-log \
+    --tensorboard-logdir $CHECKPOINT_PATH/tensorboard-log \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
     --langs $( cat /mnt/data/bpop/wmt-multi/flores_big_task2_vocab/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
