@@ -642,7 +642,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
             hyps.append(decode(gen_out[i][0]["tokens"]))
             refs.append(
                 decode(
-                    utils.strip_pad(sample["target"][i], self.tgt_dict.pad()),
+                    utils.strip_pad(sample["target"][i], self.target_dictionary.pad()),
                     escape_unk=True,  # don't count <unk> as matches to the hypo
                 )
             )
