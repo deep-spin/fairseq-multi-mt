@@ -7,7 +7,7 @@ vocabulary?
 """
 
 import argparse
-from itertools import Counter
+from collections import Counter
 
 
 def count_tokens(corpora):
