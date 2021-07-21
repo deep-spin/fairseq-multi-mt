@@ -37,7 +37,7 @@ def generate_new_embedding(word_type, dim):
     """
     # nn.init.normal_(m.weight, mean=0, std=embedding_dim ** -0.5)
     emb = [str(x) for x in np.random.normal(size=dim, loc=0, scale=dim**-0.5)]
-    return " ".join([word_type] + emb)
+    return " ".join([word_type] + emb) + "\n"
 
 
 def main():
