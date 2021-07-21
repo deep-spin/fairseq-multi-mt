@@ -18,7 +18,7 @@ def read_vocab(path):
 def read_embeddings(path):
     with open(path) as f:
         embs = dict()
-        old_V, d = f.readline().strip().split(" ")
+        f.readline()
         for line in f:
             word_type = line.split(" ", 1)[0]
             embs[word_type] = line
@@ -27,7 +27,7 @@ def read_embeddings(path):
 
 def get_embedding_dim(path):
     with open(path) as f:
-        old_V, d = f.readline().strip().split(" ")
+        f.readline()
         return len(f.readline().split(" ")) - 1
 
 
