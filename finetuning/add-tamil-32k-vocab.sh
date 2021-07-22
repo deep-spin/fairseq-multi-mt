@@ -8,7 +8,7 @@ CHECKPOINT_PATH=$1
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
-    /mnt/data/bpop/wmt-multi/filtered-data/task2/small-vocab/bin/ \
+    /mnt/data/bpop/wmt-multi/tamil-data/32k/bin \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
