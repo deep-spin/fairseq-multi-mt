@@ -369,21 +369,19 @@ class TransformerModel(FairseqEncoderDecoderModel):
         encoder = TransformerEncoder(args, src_dict, embed_tokens)
 
         pretraining_path = getattr(args, "load_pretrained_encoder_from", None)
-        discard_pretrained_emb = getattr(
-            args, "discard_pretrained_encoder_embeddings", False
-        )
-        
         if pretraining_path is not None:
-            assert Path(pretraining_path).exists(), \
-                "encoder pretrained path does not exist"
-            strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False) and not discard_pretrained_emb
+            if os.path.isfile(pretraining_path):
+                discard_pretrained_emb = getattr(
+                    args, "discard_pretrained_encoder_embeddings", False
+                )
+                strict = not bool(args.adapter_keys) and not getattr(args, "use_length_adapter", False) and not discard_pretrained_emb
 
-            encoder = checkpoint_utils.load_pretrained_component_from_model(
-                component=encoder,
-                checkpoint=pretraining_path,
-                strict=strict,
-                discard_pretrained_emb=discard_pretrained_emb
-            )
+                encoder = checkpoint_utils.load_pretrained_component_from_model(
+                    component=encoder,
+                    checkpoint=pretraining_path,
+                    strict=strict,
+                    discard_pretrained_emb=discard_pretrained_emb
+                )
         return encoder
 
     @classmethod
