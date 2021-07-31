@@ -69,4 +69,4 @@ fairseq-train \
     --best-checkpoint-metric bleu \
     --maximize-best-checkpoint-metric \
     --keep-interval-updates 1 \
-    --tensorboard-log-dir $CHECKPOINT_PATH/tb-logs
+    --tensorboard-logdir $CHECKPOINT_PATH/tb-logs
