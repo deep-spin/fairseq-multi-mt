@@ -68,4 +68,5 @@ fairseq-train \
     --eval-bleu-remove-bpe "sentencepiece" \
     --best-checkpoint-metric bleu \
     --maximize-best-checkpoint-metric \
-    --keep-interval-updates 1
+    --keep-interval-updates 1 \
+    --tensorboard-log-dir $CHECKPOINT_PATH/tb-logs
