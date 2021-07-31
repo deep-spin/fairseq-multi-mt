@@ -32,7 +32,7 @@ fairseq-train \
     --weight-decay 0.0 \
     --update-freq 2 \
     --keep-best-checkpoints 1 \
-    --save-interval-updates 0 \
+    --save-interval-updates 5000 \
     --validate-interval-updates 5000 \
     --no-epoch-checkpoints \
     --seed 222 \
@@ -62,4 +62,10 @@ fairseq-train \
     --finetune-dec-modules adapter \
     --load-pretrained-encoder-from /home/bpeters/wmt-multi/flores_big_task2_vocab/model.pt \
     --load-pretrained-decoder-from /home/bpeters/wmt-multi/flores_big_task2_vocab/model.pt \
-    --homogeneous-batch
+    --homogeneous-batch \
+    --eval-bleu \
+    --eval-bleu-args '{"beam": 1}' \
+    --eval-bleu-remove-bpe "sentencepiece" \
+    --best-checkpoint-metric bleu \
+    --maximize-best-checkpoint-metric \
+    --keep-interval-updates 1
