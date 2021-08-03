@@ -12,7 +12,7 @@ BEAM=5
 
 mkdir -p $RESULTS_PATH
 
-for PAIR in $( cat PAIRS ) ; do
+for PAIR in $( cat $PAIRS ) ; do
     LANG1=$(basename $PAIR | cut -f 1 -d "-")
     LANG2=$(basename $PAIR | cut -f 2 -d "-")
     FLORES_LANG2=$(echo $LANG2 | python $SCRIPTS_PATH/flores2m2m.py flores)
