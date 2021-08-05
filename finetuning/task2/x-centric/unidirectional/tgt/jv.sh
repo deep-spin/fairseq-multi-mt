@@ -38,7 +38,7 @@ fairseq-train \
     --seed 222 \
     --log-format simple \
     --log-interval 10 \
-    --patience 10 \
+    --patience 100 \
     --arch transformer_wmt_en_de_big \
     --encoder-layers 12 \
     --decoder-layers 12 \
@@ -63,11 +63,5 @@ fairseq-train \
     --load-pretrained-encoder-from /home/bpeters/wmt-multi/flores_big_task2_vocab/model.pt \
     --load-pretrained-decoder-from /home/bpeters/wmt-multi/flores_big_task2_vocab/model.pt \
     --homogeneous-batch \
-    --eval-bleu \
-    --eval-bleu-args '{"beam": 1}' \
-    --eval-bleu-remove-bpe "sentencepiece" \
-    --best-checkpoint-metric bleu \
-    --maximize-best-checkpoint-metric \
     --keep-interval-updates 1 \
-    --tensorboard-logdir $CHECKPOINT_PATH/tb-logs \
-    --no-epoch-checkpoints
+    --tensorboard-logdir $CHECKPOINT_PATH/tb-logs
