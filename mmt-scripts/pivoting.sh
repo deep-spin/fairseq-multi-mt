@@ -4,8 +4,8 @@ FLORES_MODEL_PATH=$2
 RESULTS_PATH=$3
 PIVOT=$4
 DICT=$FLORES_MODEL_PATH/dict.txt
-FLORES_PATH=/home/bpop/flores101_dataset/
-FAIRSEQ_PATH=/home/bpop/fairseq-multi-mt/
+FLORES_PATH=/home/bpeters/wmt-multi/flores101_dataset/
+FAIRSEQ_PATH=/home/bpeters/fairseq-multi-mt/
 SCRIPTS_PATH=$FAIRSEQ_PATH/mmt-scripts/
 BEAM=5
 
