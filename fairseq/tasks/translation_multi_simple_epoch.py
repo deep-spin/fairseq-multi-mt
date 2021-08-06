@@ -12,6 +12,7 @@ from argparse import Namespace
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from fairseq.data import (
     FairseqDataset,
     LanguagePairDataset,
@@ -650,3 +651,102 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
             logger.info("example hypothesis: " + hyps[0])
             logger.info("example reference: " + refs[0])
         return sacrebleu.corpus_bleu(hyps, [refs], tokenize="spm")
+
+
+@register_task("translation_pivot_ensemble")
+class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
+    """
+    The idea here is to overwrite inference step behavior
+    """
+
+    def inference_step(
+        self, generator, models, sample, prefix_tokens=None, constraints=None
+    ):
+        with torch.no_grad():
+            # big change here: we'll need to run this code several times with
+            # different tgt langtoks
+            # I think the tgt_langtok_spec will be the same, though
+            pivot_langs = []  # how do we get them? As an argument to inference_step?
+
+            # actually, no. we don't need to include self.args.target_lang
+            # in the pivots: we aren't doing a direct translation to it
+            pivot_samples = []
+            for pivot in pivot_langs:
+                pivot_hypos = self._inference_step(
+                    generator,
+                    models,
+                    sample,
+                    pivot,
+                    prefix_tokens=prefix_tokens,
+                    constraints=constraints
+                )
+                pivot_sample = self._hypo_to_sample(pivot_hypos, sample)
+                pivot_samples.append(pivot_sample)
+            # you want to do stuff with the original sample too: namely,
+            # encode it
+
+            # now, do some stuff with sample and pivot_samples
+            # this is where it would be useful to have a class that wraps
+            # around the ensemble model, and you do the final inference step
+            # with that model
+            # in essence, models.run_encoder(s) for s in [sample] + [pivot_samples]
+
+    def _hypo_to_sample(self, generated, original_sample):
+        new_sample = {"net_input": {"src_tokens": None, "src_lengths": None}}
+
+        max_len = max([gn[0]["tokens"].size(0) for gn in generated])
+        net_input = original_sample["net_input"]
+        # used to have max_len+1 in this dimension, because of prepending bos
+        # I don't think we still need that
+        n_src_tokens = torch.empty(
+            size=(len(generated), max_len), dtype=net_input["src_tokens"].dtype
+        )
+        n_src_lengths = torch.empty(
+            len(generated), dtype=net_input["src_lengths"].dtype
+        )
+
+        for i, gn in enumerate(generated):
+            tokens = gn[0]["tokens"]
+            tokens_size = tokens.size(0)
+            padding_needed = max_len - tokens_size
+            # tokens = torch.cat([tokens.new([bos_token]), tokens])
+            tokens = F.pad(tokens, (0, padding_needed), value=self.dictionary.pad())
+            n_src_tokens[i] = tokens
+            n_src_lengths[i] = tokens_size + 1
+
+        device = net_input["src_tokens"].device
+        # is it good to create on cpu and then move? seems weird
+        new_sample["net_input"]["src_tokens"] = n_src_tokens.to(device)
+        new_sample["net_input"]["src_lengths"] = n_src_lengths.to(device)
+        return new_sample
+
+    def _inference_step(self, generator, models, sample, pivot, prefix_tokens=None, constraints=None):
+        _, langtok_spec = self.args.langtoks["main"]
+        if not self.args.lang_tok_replacing_bos_eos:
+            if prefix_tokens is None and langtok_spec:
+                tgt_lang_tok = self.data_manager.get_decoder_langtok(
+                    pivot, langtok_spec
+                )
+                src_tokens = sample["net_input"]["src_tokens"]
+                bsz = src_tokens.size(0)
+                prefix_tokens = (
+                    torch.LongTensor([[tgt_lang_tok]]).expand(bsz, 1).to(src_tokens)
+                )
+            return generator.generate(
+                models,
+                sample,
+                prefix_tokens=prefix_tokens,
+                constraints=constraints,
+            )
+        else:
+            # I'm worried what would happen if we reached this case
+            return generator.generate(
+                models,
+                sample,
+                prefix_tokens=prefix_tokens,
+                bos_token=self.data_manager.get_decoder_langtok(
+                    pivot, langtok_spec
+                )
+                if langtok_spec
+                else self.target_dictionary.eos(),
+            )
