@@ -4,7 +4,6 @@ import sys
 import re
 import argparse
 from collections import defaultdict
-from os.path import basename
 
 
 def n_directions(n):
@@ -20,7 +19,10 @@ def parse_results(lines):
         line = line.strip()
         if line:
             if not line.startswith("BLEU"):
-                src, trg = line.split()
+                try:
+                    src, trg = line.split()
+                except ValueError:
+                    src, trg = line.split("-")
             else:
                 assert src is not None and trg is not None
                 # parse BLEU score
@@ -45,12 +47,18 @@ def print_results(results, languages):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("tasks", nargs="*")
+    parser.add_argument("--pivot_pairs", default=None)
     opt = parser.parse_args()
     task_langs = {"eur": ["en", "et", "hr", "hu", "mk", "sr"],
                   "sea": ["en", "id", "jv", "ms", "ta", "tl"]}
     assert all(task in task_langs for task in opt.tasks)
     results = parse_results(sys.stdin)
+    if opt.pivot_pairs is not None:
+        with open(opt.pivot_pairs) as f:
+            pivot_results = parse_results(f)
+        for src, src_dict in pivot_results.items():
+            for trg, score in src_dict.items():
+                results[src][trg] = score
     for task in opt.tasks:
         print(task)
         print_results(results, task_langs[task])
-            
