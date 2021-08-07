@@ -99,7 +99,7 @@ class Handler(BaseDynaHandler):
 
         assert not config.get("dummy", False)  # don't wanna deal with this
 
-        # args, dicts, langs, False
+        # args, langs, dicts, False
 
         # generate.py does something like this:
         # task = TranslationMultiSimpleEpochTask.setup_task(task_cfg)
@@ -108,7 +108,7 @@ class Handler(BaseDynaHandler):
         # bypasses the multilingual data manager
         shared_dict = TranslationTask.load_dictionary("dict.txt")
         self.vocab = {lang: shared_dict for lang in task_cfg.langs}
-        task = TranslationMultiSimpleEpochTask(task_cfg, self.vocab, [], False)
+        task = TranslationMultiSimpleEpochTask(task_cfg, [], self.vocab, False)
 
         # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
         [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
