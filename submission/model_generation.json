@@ -2,7 +2,7 @@
     "dummy": false,
     "beam_size": 5,
     "entmax_alpha": 1.0,
-    "task": "translation_multi_simple_epoch"
+    "task": "translation_multi_simple_epoch",
     "decoder_langtok": true,
     "encoder_langtok": "src"
 }
