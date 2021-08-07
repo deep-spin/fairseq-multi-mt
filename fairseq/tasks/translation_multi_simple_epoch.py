@@ -29,6 +29,8 @@ from fairseq.data.multilingual.sampling_method import SamplingMethod
 from fairseq.tasks import LegacyFairseqTask, register_task
 from fairseq.utils import FileContentsAction
 
+# from fairseq.sequence_generator import MultiPivotEnsembleModel
+
 
 EVAL_BLEU_ORDER = 4
 
@@ -690,6 +692,9 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # around the ensemble model, and you do the final inference step
             # with that model
             # in essence, models.run_encoder(s) for s in [sample] + [pivot_samples]
+            # pivot_model = MultiPivotEnsembleModel(models)
+            # and now, you need to do something similar to generator.generate
+            # with this model
 
     def _hypo_to_sample(self, generated, original_sample):
         new_sample = {"net_input": {"src_tokens": None, "src_lengths": None}}

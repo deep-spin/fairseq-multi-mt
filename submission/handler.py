@@ -14,6 +14,7 @@ from dynalab.handler.base_handler import BaseDynaHandler
 from dynalab.tasks.flores_small1 import TaskIO
 from fairseq.sequence_generator import SequenceGenerator
 from fairseq.tasks.translation import TranslationConfig, TranslationTask
+from fairseq.tasks import TranslationMultiSimpleEpochTask
 from fairseq.data import data_utils
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,7 @@ class Handler(BaseDynaHandler):
         """
         load model and extra files.
         """
+
         logger.info(
             f"Will initialize with system_properties: {context.system_properties}"
         )
@@ -92,7 +94,12 @@ class Handler(BaseDynaHandler):
             self.sequence_generator = FakeGenerator()
             logger.warning("Will use a FakeGenerator model, only testing BPE")
         else:
-            task = TranslationTask(translation_cfg, self.vocab, self.vocab)
+            # args, dicts, langs, False
+            # (and langs will not matter
+            task = TranslationMultiSimpleEpochTask(
+                translation_cfg, self.vocab, [], False
+            )
+            # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
             [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
                 [model_pt_path], task=task
             )
