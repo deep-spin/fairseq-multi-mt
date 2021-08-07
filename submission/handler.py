@@ -86,6 +86,8 @@ class Handler(BaseDynaHandler):
         self.device = device
 
         cfg = Namespace(**config)
+        task_cfg = cfg.task
+        gen_cfg = cfg.generation
 
         # translation_cfg = TranslationConfig()  # why this?
         # self.vocab = TranslationTask.load_dictionary("dict.txt")
@@ -101,7 +103,7 @@ class Handler(BaseDynaHandler):
 
         # generate.py does something like this:
         # task = tasks.setup_task(cfg.task)
-        task = TranslationMultiSimpleEpochTask.setup_task(cfg)
+        task = TranslationMultiSimpleEpochTask.setup_task(cfg.task)
 
         # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
         [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
@@ -115,10 +117,10 @@ class Handler(BaseDynaHandler):
         self.sequence_generator = SequenceGenerator(
             [model],
             tgt_dict=self.vocab,
-            beam_size=config.get("beam_size", 1),
-            max_len_a=config.get("max_len_a", 1.3),
-            max_len_b=config.get("max_len_b", 5),
-            min_len=config.get("min_len", 5),
+            beam_size=gen_cfg.get("beam_size", 1),
+            max_len_a=gen_cfg.get("max_len_a", 1.3),
+            max_len_b=gen_cfg.get("max_len_b", 5),
+            min_len=gen_cfg.get("min_len", 5),
         )
 
         self.taskIO = TaskIO()
