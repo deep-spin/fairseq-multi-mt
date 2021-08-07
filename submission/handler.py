@@ -17,6 +17,7 @@ from fairseq.sequence_generator import SequenceGenerator
 
 from fairseq.tasks.translation_multi_simple_epoch import TranslationMultiSimpleEpochTask
 from fairseq.data import data_utils
+from fairseq import options
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -83,6 +84,11 @@ class Handler(BaseDynaHandler):
             (Path(model_file_dir) / "model_generation.json").read_text()
         )
         self.device = device
+
+        parser = options.get_generation_parser()
+        parser = TranslationMultiSimpleEpochTask.add_args(parser)
+        args = options.parse_args_and_arch(parser)
+        print(args)
 
         cfg = Namespace(**config)
         # what I really need for the config is an argparse Namespace
