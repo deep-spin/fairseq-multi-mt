@@ -85,12 +85,12 @@ class Handler(BaseDynaHandler):
         )
         self.device = device
 
-        parser = options.get_generation_parser()
-        parser = TranslationMultiSimpleEpochTask.add_args(parser)
-        args = options.parse_args_and_arch(parser)
-        print(args)
-
+        # dammit, this 
         cfg = Namespace(**config)
+        TranslationMultiSimpleEpochTask.add_args(cfg)
+        # args = options.parse_args_and_arch(parser)
+        print(cfg)
+
         # what I really need for the config is an argparse Namespace
 
         # translation_cfg = TranslationConfig()  # why this?
