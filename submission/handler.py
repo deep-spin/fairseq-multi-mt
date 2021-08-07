@@ -5,6 +5,7 @@ import logging
 import time
 import os
 from pathlib import Path
+from argparse import Namespace
 
 import fairseq.checkpoint_utils
 import sentencepiece
@@ -13,7 +14,7 @@ from typing import NamedTuple
 from dynalab.handler.base_handler import BaseDynaHandler
 from dynalab.tasks.flores_small1 import TaskIO
 from fairseq.sequence_generator import SequenceGenerator
-from fairseq.tasks.translation import TranslationConfig, TranslationTask
+
 from fairseq.tasks.translation_multi_simple_epoch import TranslationMultiSimpleEpochTask
 from fairseq.data import data_utils
 
@@ -83,39 +84,47 @@ class Handler(BaseDynaHandler):
         )
         self.device = device
 
-        translation_cfg = TranslationConfig()
-        self.vocab = TranslationTask.load_dictionary("dict.txt")
+        cfg = Namespace(**config)
+        # what I really need for the config is an argparse Namespace
+
+        # translation_cfg = TranslationConfig()  # why this?
+        # self.vocab = TranslationTask.load_dictionary("dict.txt")
 
         self.spm = sentencepiece.SentencePieceProcessor()
         self.spm.Load("sentencepiece.bpe.model")
         logger.info("Loaded sentencepiece.bpe.model")
 
-        if config.get("dummy", False):
-            self.sequence_generator = FakeGenerator()
-            logger.warning("Will use a FakeGenerator model, only testing BPE")
-        else:
-            # args, dicts, langs, False
-            # (and langs will not matter
-            task = TranslationMultiSimpleEpochTask(
-                translation_cfg, self.vocab, [], False
-            )
-            # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
-            [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
-                [model_pt_path], task=task
-            )
-            model.eval().to(self.device)
-            logger.info(f"Loaded model from {model_pt_path} to device {self.device}")
-            logger.info(
-                f"Will use the following config: {json.dumps(config, indent=4)}"
-            )
-            self.sequence_generator = SequenceGenerator(
-                [model],
-                tgt_dict=self.vocab,
-                beam_size=config.get("beam_size", 1),
-                max_len_a=config.get("max_len_a", 1.3),
-                max_len_b=config.get("max_len_b", 5),
-                min_len=config.get("min_len", 5),
-            )
+        assert not config.get("dummy", False)  # don't wanna deal with this
+
+        # args, dicts, langs, False
+        # (and langs will not matter
+
+        # generate.py does something like this:
+        # task = tasks.setup_task(cfg.task)
+        task = TranslationMultiSimpleEpochTask.setup_task(cfg)
+
+        '''
+        task = TranslationMultiSimpleEpochTask(
+            translation_cfg, self.vocab, [], False
+        )
+        '''
+        # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
+        [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
+            [model_pt_path], task=task
+        )
+        model.eval().to(self.device)
+        logger.info(f"Loaded model from {model_pt_path} to device {self.device}")
+        logger.info(
+            f"Will use the following config: {json.dumps(config, indent=4)}"
+        )
+        self.sequence_generator = SequenceGenerator(
+            [model],
+            tgt_dict=self.vocab,
+            beam_size=config.get("beam_size", 1),
+            max_len_a=config.get("max_len_a", 1.3),
+            max_len_b=config.get("max_len_b", 5),
+            min_len=config.get("min_len", 5),
+        )
 
         self.taskIO = TaskIO()
         self.initialized = True
