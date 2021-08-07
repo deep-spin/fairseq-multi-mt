@@ -341,7 +341,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         model = super().build_model(args)
 
         # this bit is ported from the translation task:
-        if self.args.eval_bleu:
+        if getattr(self.args, "eval_bleu", False):
             detok_args = json.loads(self.args.eval_bleu_detok_args)
             self.tokenizer = encoders.build_tokenizer(
                 Namespace(tokenizer=self.args.eval_bleu_detok, **detok_args)

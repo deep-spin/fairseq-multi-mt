@@ -14,7 +14,7 @@ from typing import NamedTuple
 from dynalab.handler.base_handler import BaseDynaHandler
 from dynalab.tasks.flores_small1 import TaskIO
 from fairseq.sequence_generator import SequenceGenerator
-
+from fairseq.tasks.translation import TranslationTask
 from fairseq.tasks.translation_multi_simple_epoch import TranslationMultiSimpleEpochTask
 from fairseq.data import data_utils
 from fairseq import options
@@ -110,7 +110,10 @@ class Handler(BaseDynaHandler):
         self.vocab = {lang: shared_dict for lang in task_cfg.langs}
         task = TranslationMultiSimpleEpochTask(task_cfg, [], self.vocab, False)
 
-        # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
+        # now: problem with model loading: the model config includes some
+        # paths that we no longer have, and don't care about (for example,
+        # places to load embeddings from). I solved this by manually changing
+        # the values of the model config parameters in model.pt.
         [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
             [model_pt_path], task=task
         )
