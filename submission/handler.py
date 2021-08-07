@@ -85,13 +85,7 @@ class Handler(BaseDynaHandler):
         )
         self.device = device
 
-        # dammit, this 
         cfg = Namespace(**config)
-        TranslationMultiSimpleEpochTask.add_args(cfg)
-        # args = options.parse_args_and_arch(parser)
-        print(cfg)
-
-        # what I really need for the config is an argparse Namespace
 
         # translation_cfg = TranslationConfig()  # why this?
         # self.vocab = TranslationTask.load_dictionary("dict.txt")
@@ -109,11 +103,6 @@ class Handler(BaseDynaHandler):
         # task = tasks.setup_task(cfg.task)
         task = TranslationMultiSimpleEpochTask.setup_task(cfg)
 
-        '''
-        task = TranslationMultiSimpleEpochTask(
-            translation_cfg, self.vocab, [], False
-        )
-        '''
         # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
         [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
             [model_pt_path], task=task
