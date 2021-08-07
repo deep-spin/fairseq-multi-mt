@@ -226,7 +226,7 @@
         "enable_reservsed_directions_shared_datasets": false,
         "extra_data": null,
         "extra_lang_pairs": null,
-        "fixed_dictionary": dict.txt,
+        "fixed_dictionary": "dict.txt",
         "langtoks_specs": ["main"],
         "langtoks": {"main": ["src", "tgt"]},
         "sampling_weights_from_file": null,
