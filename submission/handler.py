@@ -100,11 +100,15 @@ class Handler(BaseDynaHandler):
         assert not config.get("dummy", False)  # don't wanna deal with this
 
         # args, dicts, langs, False
-        # (and langs will not matter
 
         # generate.py does something like this:
-        # task = tasks.setup_task(cfg.task)
-        task = TranslationMultiSimpleEpochTask.setup_task(task_cfg)
+        # task = TranslationMultiSimpleEpochTask.setup_task(task_cfg)
+        # note that this solution does not handle adapter keys: a better way
+        # would probably be to write a different version of setup_task that
+        # bypasses the multilingual data manager
+        shared_dict = TranslationTask.load_dictionary("dict.txt")
+        self.vocab = {lang: shared_dict for lang in task_cfg.langs}
+        task = TranslationMultiSimpleEpochTask(task_cfg, self.vocab, [], False)
 
         # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
         [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
