@@ -14,7 +14,7 @@ from dynalab.handler.base_handler import BaseDynaHandler
 from dynalab.tasks.flores_small1 import TaskIO
 from fairseq.sequence_generator import SequenceGenerator
 from fairseq.tasks.translation import TranslationConfig, TranslationTask
-from fairseq.tasks import TranslationMultiSimpleEpochTask
+from fairseq.tasks.translation_multi_simple_epoch import TranslationMultiSimpleEpochTask
 from fairseq.data import data_utils
 
 logger = logging.getLogger(__name__)
