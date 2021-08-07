@@ -83,6 +83,7 @@ class Handler(BaseDynaHandler):
         config = json.loads(
             (Path(model_file_dir) / "model_generation.json").read_text()
         )
+        # todo: set path to dictionaries correctly, possibly overriding config
         self.device = device
 
         cfg = Namespace(**config)
