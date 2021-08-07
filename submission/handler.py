@@ -99,7 +99,7 @@ class Handler(BaseDynaHandler):
 
         cfg = Namespace(**config)
         task_cfg = Namespace(**cfg.task)
-        gen_cfg = Namespace(**cfg.generation)
+        gen_cfg = cfg.generation
 
         # translation_cfg = TranslationConfig()  # why this?
         # self.vocab = TranslationTask.load_dictionary("dict.txt")
@@ -140,8 +140,8 @@ class Handler(BaseDynaHandler):
         )
         self.sequence_generator = SequenceGenerator(
             [model],
-            tgt_dict=self.vocab,
-            beam_size=gen_cfg.get("beam_size", 1),
+            tgt_dict=next(iter(self.vocab.values())),
+            beam_size=gen_cfg.get("beam", 1),
             max_len_a=gen_cfg.get("max_len_a", 1.3),
             max_len_b=gen_cfg.get("max_len_b", 5),
             min_len=gen_cfg.get("min_len", 5),
