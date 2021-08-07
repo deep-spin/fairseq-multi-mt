@@ -17,7 +17,7 @@ from fairseq.sequence_generator import SequenceGenerator
 from fairseq.tasks.translation import TranslationTask
 from fairseq.tasks.translation_multi_simple_epoch import TranslationMultiSimpleEpochTask
 from fairseq.data import data_utils
-from fairseq import options
+from fairseq.data.multilingual.multilingual_utils import augment_dictionary
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -48,6 +48,17 @@ tur:tr,ukr:uk,umb:umb,urd:ur,uzb:uz,vie:vi,wol:wo,xho:xh,yor:yo,zho_simp:zh,
 zho_trad:zh,zul:zu
 """
 )
+
+
+def _load_augmented_dictionary(path, language_list, lang_tok_style, langtoks_specs):
+    d = TranslationTask.load_dictionary(path)
+    augment_dictionary(
+        dictionary=d,
+        language_list=language_list,
+        lang_tok_style=lang_tok_style,
+        langtoks_specs=langtoks_specs
+    )
+    return d
 
 
 class FakeGenerator:
@@ -106,7 +117,12 @@ class Handler(BaseDynaHandler):
         # note that this solution does not handle adapter keys: a better way
         # would probably be to write a different version of setup_task that
         # bypasses the multilingual data manager
-        shared_dict = TranslationTask.load_dictionary("dict.txt")
+        shared_dict = _load_augmented_dictionary(
+            "dict.txt",
+            task_cfg.langs,
+            task_cfg.lang_tok_style,
+            task_cfg.langtoks_specs
+        )
         self.vocab = {lang: shared_dict for lang in task_cfg.langs}
         task = TranslationMultiSimpleEpochTask(task_cfg, [], self.vocab, False)
 
