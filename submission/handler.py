@@ -86,8 +86,8 @@ class Handler(BaseDynaHandler):
         self.device = device
 
         cfg = Namespace(**config)
-        task_cfg = cfg.task
-        gen_cfg = cfg.generation
+        task_cfg = Namespace(**cfg.task)
+        gen_cfg = Namespace(**cfg.generation)
 
         # translation_cfg = TranslationConfig()  # why this?
         # self.vocab = TranslationTask.load_dictionary("dict.txt")
@@ -103,7 +103,7 @@ class Handler(BaseDynaHandler):
 
         # generate.py does something like this:
         # task = tasks.setup_task(cfg.task)
-        task = TranslationMultiSimpleEpochTask.setup_task(cfg.task)
+        task = TranslationMultiSimpleEpochTask.setup_task(task_cfg)
 
         # task = TranslationTask(translation_cfg, self.vocab, self.vocab)
         [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
