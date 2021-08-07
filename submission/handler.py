@@ -123,8 +123,13 @@ class Handler(BaseDynaHandler):
             task_cfg.lang_tok_style,
             task_cfg.langtoks_specs
         )
-        self.vocab = {lang: shared_dict for lang in task_cfg.langs}
-        task = TranslationMultiSimpleEpochTask(task_cfg, [], self.vocab, False)
+        self.vocab = shared_dict
+        task = TranslationMultiSimpleEpochTask(
+            task_cfg,
+            [],
+            {lang: shared_dict for lang in task_cfg.langs},
+            False
+        )
 
         # now: problem with model loading: the model config includes some
         # paths that we no longer have, and don't care about (for example,
@@ -140,7 +145,7 @@ class Handler(BaseDynaHandler):
         )
         self.sequence_generator = SequenceGenerator(
             [model],
-            tgt_dict=next(iter(self.vocab.values())),
+            tgt_dict=self.vocab,
             beam_size=gen_cfg.get("beam", 1),
             max_len_a=gen_cfg.get("max_len_a", 1.3),
             max_len_b=gen_cfg.get("max_len_b", 5),
