@@ -128,7 +128,7 @@ class Handler(BaseDynaHandler):
             task_cfg,
             [],
             {lang: shared_dict for lang in task_cfg.langs},
-            False
+            True
         )
 
         # now: problem with model loading: the model config includes some
@@ -183,6 +183,7 @@ class Handler(BaseDynaHandler):
         return sample
 
     def preprocess(self, samples) -> dict:
+        print(samples)
         samples = [self.preprocess_one(s) for s in samples]
         prefix_tokens = torch.tensor([[s["tgt_token"]] for s in samples])
         src_lengths = torch.tensor([s["src_length"] for s in samples])
