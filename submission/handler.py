@@ -321,9 +321,9 @@ def handle(torchserve_data, context):
 
 
 def local_test():
-    from dynalab.tasks import flores_small1
+    from dynalab.tasks import flores_small2
 
-    bin_data = b"\n".join(json.dumps(d).encode("utf-8") for d in flores_small1.data)
+    bin_data = b"\n".join(json.dumps(d).encode("utf-8") for d in flores_small2.data)
     torchserve_data = [{"body": bin_data}]
 
     manifest = {"model": {"serializedFile": "model.pt"}}
@@ -339,7 +339,7 @@ def local_test():
 
     single_responses = [
         handle([{"body": json.dumps(d).encode("utf-8")}], ctx)[0]
-        for d in flores_small1.data
+        for d in flores_small2.data
     ]
     assert batch_responses == ["\n".join(single_responses)]
 
