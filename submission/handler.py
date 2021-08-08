@@ -183,7 +183,6 @@ class Handler(BaseDynaHandler):
         return sample
 
     def preprocess(self, samples) -> dict:
-        print(samples)
         samples = [self.preprocess_one(s) for s in samples]
         prefix_tokens = torch.tensor([[s["tgt_token"]] for s in samples])
         src_lengths = torch.tensor([s["src_length"] for s in samples])
