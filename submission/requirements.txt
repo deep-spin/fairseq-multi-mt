@@ -1,4 +1,4 @@
 sentencepiece
 entmax
 # Replace this by 1.0.0 once it's out
-git+git://github.com/deep-spin/fairseq-multi-mt.git@master#egg=fairseq-multi-mt
+git+git://github.com/deep-spin/fairseq-multi-mt.git@master#egg=fairseq
