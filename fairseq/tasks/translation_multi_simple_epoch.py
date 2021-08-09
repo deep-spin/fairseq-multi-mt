@@ -692,7 +692,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # around the ensemble model, and you do the final inference step
             # with that model
             # in essence, models.run_encoder(s) for s in [sample] + [pivot_samples]
-            # pivot_model = MultiPivotEnsembleModel(models)
+            pivot_model = MultiPivotEnsembleModel(models)
             # and now, you need to do something similar to generator.generate
             # with this model
 

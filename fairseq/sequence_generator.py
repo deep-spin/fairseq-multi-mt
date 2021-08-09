@@ -885,9 +885,7 @@ class MultiPivotEnsembleModel(nn.Module):
     """
     Not sure if this should subclass EnsembleModel
     """
-    def __init__(self, model):
-        # doesn't need to be much more than a wrapper about model, which
-        # should probably be an ensemble model
+    def __init__(self, model: EnsembleModel):
         self.model = model
         self.has_incremental = self.model.has_incremental
 
@@ -902,6 +900,11 @@ class MultiPivotEnsembleModel(nn.Module):
 
     @torch.jit.export
     def forward_encoder(self, net_inputs: List[Dict[str, Tensor]]):
+        """
+        In a conventional ensemble, there are several models and a single
+        net_input. Here, it's the other way around: the same model (or ensemble
+        of models) is used to decode several inputs.
+        """
         if not self.has_encoder():
             return None
         # should be self.model.encoder_forward?
@@ -917,74 +920,48 @@ class MultiPivotEnsembleModel(nn.Module):
         temperature: float = 1.0,
         alpha: float = 1.0
     ):
+        """
+        How do we decode in a multi-pivot setting? It should be pretty similar
+        to a conventional ensemble: decode a step for each encoder output,
+        then combine the probability distributions.
+        """
         log_probs = []
-        avg_attn: Optional[Tensor] = None
         encoder_out: Optional[Dict[str, List[Tensor]]] = None
+        n_pivots = len(encoder_outs)  # doesn't need to be instance attribute
 
         # can't iterate over models: have to iterate over encoder_outs
         for i, encoder_out in enumerate(encoder_outs):
             # decode each model
             if self.has_incremental_states():
-                # maybe it should be model.decoder_forward, though, because
                 decoder_out = self.model.forward_decoder(
                     tokens,
                     encoder_out=encoder_out,
                     incremental_state=incremental_states[i],
                 )
             else:
-                # this hasattr might be incorrect...for now, we'll just
                 # assume we're working with the kinds of models that have
                 # encoders and decoders
-                '''
-                if hasattr(self.model, "decoder"):
-                    decoder_out = self.model.decoder.forward(tokens, encoder_out=encoder_out)
-                else:
-                    decoder_out = self.model.forward(tokens)
-                '''
-                decoder_out = self.model.forward_decoder(tokens, encoder_out=encoder_out)
-
-            attn: Optional[Tensor] = None
-            decoder_len = len(decoder_out)
-            if decoder_len > 1 and decoder_out[1] is not None:
-                if isinstance(decoder_out[1], Tensor):
-                    attn = decoder_out[1]
-                else:
-                    attn_holder = decoder_out[1]["attn"]
-                    if isinstance(attn_holder, Tensor):
-                        attn = attn_holder
-                    elif attn_holder is not None:
-                        attn = attn_holder[0]
-                if attn is not None:
-                    attn = attn[:, -1, :]
+                decoder_out = self.model.forward_decoder(
+                    tokens, encoder_out=encoder_out
+                )
 
             decoder_out_tuple = (
-                decoder_out[0][:, -1:, :].div_(temperature),
-                None if decoder_len <= 1 else decoder_out[1],
+                decoder_out[0][:, -1:, :].div_(temperature), None
             )
             probs = self.model.get_normalized_probs(
                 decoder_out_tuple, log_probs=True, sample=None, alpha=alpha
             )
             probs = probs[:, -1, :]
             if self.models_size == 1:
-                return probs, attn
+                return probs, None
 
             log_probs.append(probs)
-            '''
-            if attn is not None:
-                if avg_attn is None:
-                    avg_attn = attn
-                else:
-                    avg_attn.add_(attn)
-            '''
 
         avg_probs = torch.logsumexp(torch.stack(log_probs, dim=0), dim=0) - math.log(
-            self.models_size
+            n_pivots
         )
-        '''
-        if avg_attn is not None:
-            avg_attn.div_(self.models_size)
-        '''
-        return avg_probs, avg_attn
+
+        return avg_probs, None
 
     @torch.jit.export
     def reorder_encoder_out(
