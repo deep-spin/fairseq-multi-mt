@@ -668,7 +668,8 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # big change here: we'll need to run this code several times with
             # different tgt langtoks
             # I think the tgt_langtok_spec will be the same, though
-            pivot_langs = []  # how do we get them? As an argument to inference_step?
+            # for now, we do hard-coded pivot languages.
+            pivot_langs = ["en", "id"]
 
             # actually, no. we don't need to include self.args.target_lang
             # in the pivots: we aren't doing a direct translation to it
