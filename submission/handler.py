@@ -110,8 +110,6 @@ class Handler(BaseDynaHandler):
 
         assert not config.get("dummy", False)  # don't wanna deal with this
 
-        # args, langs, dicts, False
-
         # generate.py does something like this:
         # task = TranslationMultiSimpleEpochTask.setup_task(task_cfg)
         # note that this solution does not handle adapter keys: a better way
@@ -123,6 +121,9 @@ class Handler(BaseDynaHandler):
             task_cfg.lang_tok_style,
             task_cfg.langtoks_specs
         )
+        # we can use self.spm.set_vocabulary(vocab) to limit the vocabulary to
+        # the vocabulary in dict.txt, where vocab is a list of subword types
+        self.spm.set_vocabulary(shared_dict.symbols)
         self.vocab = shared_dict
         task = TranslationMultiSimpleEpochTask(
             task_cfg,
@@ -163,6 +164,7 @@ class Handler(BaseDynaHandler):
         return token
 
     def tokenize(self, line: str) -> list:
+        # todo: rewrite this to make use of reduced vocabulary
         words = self.spm.EncodeAsPieces(line.strip())
         tokens = [self.vocab.index(word) for word in words]
         return tokens
