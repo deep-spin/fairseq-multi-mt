@@ -29,7 +29,7 @@ from fairseq.data.multilingual.sampling_method import SamplingMethod
 from fairseq.tasks import LegacyFairseqTask, register_task
 from fairseq.utils import FileContentsAction
 
-# from fairseq.sequence_generator import MultiPivotEnsembleModel
+from fairseq.sequence_generator import MultiPivotEnsembleModel
 
 
 EVAL_BLEU_ORDER = 4
@@ -671,8 +671,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # for now, we do hard-coded pivot languages.
             pivot_langs = ["en", "id"]
 
-            # actually, no. we don't need to include self.args.target_lang
-            # in the pivots: we aren't doing a direct translation to it
+            # for each pivot, translate src-> pivot
             pivot_samples = []
             for pivot in pivot_langs:
                 pivot_hypos = self._inference_step(
@@ -694,8 +693,36 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # with that model
             # in essence, models.run_encoder(s) for s in [sample] + [pivot_samples]
             pivot_model = MultiPivotEnsembleModel(models)
-            # and now, you need to do something similar to generator.generate
-            # with this model
+
+            # translate pivots -> tgt
+            _, tgt_langtok_spec = self.args.langtoks["main"]
+            if not self.args.lang_tok_replacing_bos_eos:
+                if prefix_tokens is None and tgt_langtok_spec:
+                    tgt_lang_tok = self.data_manager.get_decoder_langtok(
+                        self.args.target_lang, tgt_langtok_spec
+                    )
+                    src_tokens = sample["net_input"]["src_tokens"]
+                    bsz = src_tokens.size(0)
+                    prefix_tokens = (
+                        torch.LongTensor([[tgt_lang_tok]]).expand(bsz, 1).to(src_tokens)
+                    )
+                return generator.generate(
+                    pivot_model,
+                    sample,
+                    prefix_tokens=prefix_tokens,
+                    constraints=constraints,
+                )
+            else:
+                return generator.generate(
+                    pivot_model,
+                    sample,
+                    prefix_tokens=prefix_tokens,
+                    bos_token=self.data_manager.get_decoder_langtok(
+                        self.args.target_lang, tgt_langtok_spec
+                    )
+                    if tgt_langtok_spec
+                    else self.target_dictionary.eos(),  # that can't be right
+                )
 
     def _hypo_to_sample(self, generated, original_sample):
         new_sample = {"net_input": {"src_tokens": None, "src_lengths": None}}
