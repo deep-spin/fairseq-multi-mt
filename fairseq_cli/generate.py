@@ -212,12 +212,21 @@ def _main(cfg: DictConfig, output_file):
             has_target = sample["target"] is not None
 
             # Remove padding
-            if "src_tokens" in sample["net_input"]:
-                src_tokens = utils.strip_pad(
-                    sample["net_input"]["src_tokens"][i, :], tgt_dict.pad()
-                )
+            if isinstance(sample["net_input"], list):
+                if "src_tokens" in sample["net_input"][0]:
+                    src_tokens = utils.strip_pad(
+                        sample["net_input"][0]["src_tokens"][i, :], tgt_dict.pad()
+                    )
+                else:
+                    src_tokens = None
+
             else:
-                src_tokens = None
+                if "src_tokens" in sample["net_input"]:
+                    src_tokens = utils.strip_pad(
+                        sample["net_input"]["src_tokens"][i, :], tgt_dict.pad()
+                    )
+                else:
+                    src_tokens = None
 
             target_tokens = None
             if has_target:
