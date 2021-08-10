@@ -752,6 +752,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         assert all(v is shared_dict for v in self.dicts.values())
 
         # we need to add pivot langs to this
+        self.eval_lang_pairs = ["{}-{}".format(args.source_lang, args.target_lang)]
         self.lang_pairs = ["{}-{}".format(args.source_lang, args.target_lang)]
         pivot_langs = args.pivot_langs.split(",")
         self.pivot_langs = pivot_langs
@@ -767,7 +768,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         # optimize for certain languages we want to use a different subset. Thus
         # the eval_lang_pairs class variable is provided for classes that extend
         # this class.
-        self.eval_lang_pairs = self.lang_pairs
+
         # model_lang_pairs will be used to build encoder-decoder model pairs in
         # models.build_model(). This allows multitask type of sub-class can
         # build models other than the input lang_pairs
@@ -778,7 +779,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
 
         self.sampling_method = SamplingMethod.build_sampler(args, self)
         self.data_manager = MultilingualDatasetManager.setup_data_manager(
-            args, self.lang_pairs, langs, dicts, self.sampling_method
+            args, self.eval_lang_pairs, langs, dicts, self.sampling_method
         )
 
     def check_dicts(self, dicts, source_langs, target_langs):

@@ -213,6 +213,7 @@ def _main(cfg: DictConfig, output_file):
 
             # Remove padding
             if isinstance(sample["net_input"], list):
+                # wouldn't it be better to src_tokens outside the loop?
                 if "src_tokens" in sample["net_input"][0]:
                     src_tokens = utils.strip_pad(
                         sample["net_input"][0]["src_tokens"][i, :], tgt_dict.pad()
