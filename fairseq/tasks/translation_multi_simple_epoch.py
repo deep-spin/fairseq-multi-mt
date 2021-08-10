@@ -872,13 +872,14 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         n_src_lengths = torch.empty(
             len(generated), dtype=net_input["src_lengths"].dtype
         )
+        any_dict = next(iter(self.dicts.values()))
 
         for i, gn in enumerate(generated):
             tokens = gn[0]["tokens"]
             tokens_size = tokens.size(0)
             padding_needed = max_len - tokens_size
             # tokens = torch.cat([tokens.new([bos_token]), tokens])
-            tokens = F.pad(tokens, (0, padding_needed), value=self.dictionary.pad())
+            tokens = F.pad(tokens, (0, padding_needed), value=any_dict.pad())
             n_src_tokens[i] = tokens
             n_src_lengths[i] = tokens_size + 1
 
