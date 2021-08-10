@@ -770,17 +770,15 @@ class MultiSourceSequenceGenerator(SequenceGenerator):
     ):
         if not isinstance(model, EnsembleModel) and not isinstance(model, MultiPivotEnsembleModel):
             model = EnsembleModel(model)
+
+        # problem: the structure I need for incremental_states is different
+        # depending on whether it's an EnsembleModel or a MultiPivotEnsembleModel
+        # (whose subparts are individually ensembles)
         if isinstance(model, EnsembleModel):
-            n_incremental_states = model.models_size
+            incremental_states = model.build_incremental_states()
         else:
             n_incremental_states = len(sample["net_input"]) if isinstance(sample["net_input"], list) else 1
-        incremental_states = torch.jit.annotate(
-            List[Dict[str, Dict[str, Optional[Tensor]]]],
-            [
-                torch.jit.annotate(Dict[str, Dict[str, Optional[Tensor]]], {})
-                for i in range(n_incremental_states)
-            ],
-        )
+            incremental_states = model.build_incremental_states(n_incremental_states)
 
         # here: multiple net_inputs (should be a list of dicts)
         net_inputs = sample["net_input"]
@@ -1162,6 +1160,19 @@ class EnsembleModel(nn.Module):
         ):
             self.has_incremental = True
 
+    def build_incremental_states(self):
+        if not self.has_incremental:
+            return None
+
+        incremental_states = torch.jit.annotate(
+            List[Dict[str, Dict[str, Optional[Tensor]]]],
+            [
+                torch.jit.annotate(Dict[str, Dict[str, Optional[Tensor]]], {})
+                for i in range(self.models_size)
+            ],
+        )
+        return incremental_states
+
     def forward(self):
         pass
 
@@ -1297,6 +1308,11 @@ class MultiPivotEnsembleModel(nn.Module):
         else:
             self.model = EnsembleModel(models)
         self.has_incremental = self.model.has_incremental
+
+    def build_incremental_states(self, n_pivots):
+        if not self.has_incremental:
+            return None
+        return [self.model.build_incremental_states() for i in range(n_pivots)]
 
     def has_encoder(self):
         return self.model.has_encoder()
