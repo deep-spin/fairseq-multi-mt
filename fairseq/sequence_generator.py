@@ -1419,7 +1419,7 @@ class MultiPivotEnsembleModel(nn.Module):
     @torch.jit.export
     def reorder_incremental_state(
         self,
-        incremental_states: List[Dict[str, Dict[str, Optional[Tensor]]]],
+        incremental_states: List[List[Dict[str, Dict[str, Optional[Tensor]]]]],
         new_order,
     ):
         '''
@@ -1430,7 +1430,8 @@ class MultiPivotEnsembleModel(nn.Module):
                 incremental_states[i], new_order
             )
         '''
-        self.model.reorder_incremental_state(incremental_states, new_order)
+        for incr_st in incremental_states:
+            self.model.reorder_incremental_state(incr_st, new_order)
 
 
 class SequenceGeneratorWithAlignment(SequenceGenerator):
