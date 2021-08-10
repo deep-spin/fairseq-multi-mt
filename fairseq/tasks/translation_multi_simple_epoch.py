@@ -806,7 +806,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         extra_gen_cls_kwargs=None,
     ):
         if seq_gen_cls is None:
-            seq_gen_cls = DefaultSequenceGenerator
+            seq_gen_cls = SequenceGeneratorWithDefault
         return super().build_generator(
             models, args, seq_gen_cls=seq_gen_cls, extra_gen_cls_kwargs=extra_gen_cls_kwargs
         )
