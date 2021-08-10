@@ -741,7 +741,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         also need to be included in the lang pairs. However, I think
         setup_task can safely inherit.
         """
-        super().__init__(args)
+        LegacyFairseqTask.__init__(args)
         self.langs = langs
         self.dicts = dicts
         assert not training  # this task is specific to inference
@@ -749,7 +749,9 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
 
         # we need to add pivot langs to this
         self.lang_pairs = ["{}-{}".format(args.source_lang, args.target_lang)]
-        for pivot_lang in args.pivot_langs.split(","):
+        pivot_langs = args.pivot_langs.split(",")
+        self.pivot_langs = pivot_langs
+        for pivot_lang in pivot_langs:
             self.lang_pairs.append("{}-{}".format(args.source_lang, pivot_lang))
             self.lang_pairs.append("{}-{}".format(pivot_lang, args.target_lang))
 
@@ -797,11 +799,10 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # different tgt langtoks
             # I think the tgt_langtok_spec will be the same, though
             # for now, we do hard-coded pivot languages.
-            pivot_langs = ["en", "id"]
 
             # for each pivot, translate src-> pivot
             pivot_samples = []
-            for pivot in pivot_langs:
+            for pivot in self.pivot_langs:
                 pivot_hypos = self._inference_step(
                     generator,
                     models,
