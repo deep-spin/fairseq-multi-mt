@@ -768,14 +768,17 @@ class MultiSourceSequenceGenerator(SequenceGenerator):
         constraints: Optional[Tensor] = None,
         bos_token: Optional[int] = None,
     ):
-        n_src = len(sample["net_input"]) if isinstance(sample["net_input"], list) else 1
         if not isinstance(model, EnsembleModel) and not isinstance(model, MultiPivotEnsembleModel):
             model = EnsembleModel(model)
+        if isinstance(model, EnsembleModel):
+            n_incremental_states = model.models_size
+        else:
+            n_incremental_states = len(sample["net_input"]) if isinstance(sample["net_input"], list) else 1
         incremental_states = torch.jit.annotate(
             List[Dict[str, Dict[str, Optional[Tensor]]]],
             [
                 torch.jit.annotate(Dict[str, Dict[str, Optional[Tensor]]], {})
-                for i in range(n_src)
+                for i in range(n_incremental_states)
             ],
         )
 
