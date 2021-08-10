@@ -1345,7 +1345,7 @@ class MultiPivotEnsembleModel(nn.Module):
                 decoder_out = self.model.forward_decoder(
                     tokens,
                     encoder_outs=encoder_out,
-                    incremental_state=incremental_states[i],
+                    incremental_states=incremental_states[i],
                 )
             else:
                 # assume we're working with the kinds of models that have
