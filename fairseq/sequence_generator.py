@@ -740,7 +740,7 @@ class SequenceGenerator(nn.Module):
         return False
 
 
-class SequenceGeneratorWithDefault(SequenceGenerator):
+class MultiSourceSequenceGenerator(SequenceGenerator):
     @torch.no_grad()
     def generate(self, models, sample: Dict[str, Dict[str, Tensor]], **kwargs) -> List[List[Dict[str, Tensor]]]:
         """Generate translations. Match the api of other fairseq generators.
@@ -777,33 +777,27 @@ class SequenceGeneratorWithDefault(SequenceGenerator):
                 for i in range(model.models_size)
             ],
         )
-        net_input = sample["net_input"]
 
-        if "src_tokens" in net_input:
-            src_tokens = net_input["src_tokens"]
-            # length of the source text being the character length except EndOfSentence and pad
-            src_lengths = (
-                (src_tokens.ne(self.eos) & src_tokens.ne(self.pad)).long().sum(dim=1)
-            )
-        elif "source" in net_input:
-            src_tokens = net_input["source"]
-            src_lengths = (
-                net_input["padding_mask"].size(-1) - net_input["padding_mask"].sum(-1)
-                if net_input["padding_mask"] is not None
-                else torch.tensor(src_tokens.size(-1)).to(src_tokens)
-            )
-        elif "features" in net_input:
-            src_tokens = net_input["features"]
-            src_lengths = (
-                net_input["padding_mask"].size(-1) - net_input["padding_mask"].sum(-1)
-                if net_input["padding_mask"] is not None
-                else torch.tensor(src_tokens.size(-1)).to(src_tokens)
-            )
+        # here: multiple net_inputs (should be a list of dicts)
+        net_inputs = sample["net_input"]
+
+        # what are the src_tokens for? we need their device
+        # these "src_tokens" can be from any of the source sequences, it
+        # doesn't matter -- they are only to make sure tensors are created on
+        # the correct device
+        if "src_tokens" in net_inputs[0]:
+            src_tokens = net_inputs[0]["src_tokens"]
+        elif "source" in net_inputs[0]:
+            src_tokens = net_inputs[0]["source"]
+        elif "features" in net_inputs[0]:
+            src_tokens = net_inputs[0]["features"]
         else:
-            raise Exception("expected src_tokens or source in net input. input keys: " + str(net_input.keys()))
+            raise Exception("expected src_tokens or source in net input. input keys: " + str(net_inputs[0].keys()))
 
         # bsz: total number of sentences in beam
         # Note that src_tokens may have more than 2 dimensions (i.e. audio features)
+        # actually, it might be better to check all of the source lengths to
+        # get the max: probably future work, not critical.
         bsz, src_len = src_tokens.size()[:2]
         beam_size = self.beam_size
 
@@ -815,19 +809,15 @@ class SequenceGeneratorWithDefault(SequenceGenerator):
         # Initialize constraints, when active
         self.search.init_constraints(constraints, beam_size)
 
-        max_len: int = -1
-        if self.match_source_len:
-            max_len = src_lengths.max().item()
-        else:
-            max_len = min(
-                int(self.max_len_a * src_len + self.max_len_b),
-                self.max_len - 1,
-            )
+        assert not self.match_source_len
+        max_len = min(
+            int(self.max_len_a * src_len + self.max_len_b), self.max_len - 1,
+        )
         assert (
             self.min_len <= max_len
         ), "min_len cannot be larger than max_len, please adjust these!"
         # compute the encoder output for each beam
-        encoder_outs = model.forward_encoder(net_input)
+        encoder_outs = model.forward_encoder(net_inputs)
 
         # placeholder of indices for bsz * beam_size to hold tokens and accumulative scores
         new_order = torch.arange(bsz).view(-1, 1).repeat(1, beam_size).view(-1)
@@ -883,6 +873,10 @@ class SequenceGeneratorWithDefault(SequenceGenerator):
         batch_idxs: Optional[Tensor] = None
 
         original_batch_idxs: Optional[Tensor] = None
+
+        # TODO: figure out what to do with "id" and such here
+        # really, every sample in the list should have the same id: I'd prefer
+        # to keep this close to the same
         if "id" in sample and isinstance(sample["id"], Tensor):
             original_batch_idxs = sample["id"]
         else:
@@ -966,8 +960,7 @@ class SequenceGeneratorWithDefault(SequenceGenerator):
                 scores
             )  # scores of hypothesis ending with eos (finished sentences)
 
-            if self.should_set_src_lengths:
-                self.search.set_src_lengths(src_lengths)
+            assert not self.should_set_src_lengths
 
             if self.repeat_ngram_blocker is not None:
                 lprobs = self.repeat_ngram_blocker(tokens, lprobs, bsz, beam_size, step)
@@ -1014,7 +1007,7 @@ class SequenceGeneratorWithDefault(SequenceGenerator):
                     finished,
                     beam_size,
                     attn,
-                    src_lengths,
+                    None,  # used to be src_lengths
                     max_len,
                 )
                 num_remaining_sent -= len(finalized_sents)
@@ -1053,7 +1046,6 @@ class SequenceGeneratorWithDefault(SequenceGenerator):
 
                 if prefix_tokens is not None:
                     prefix_tokens = prefix_tokens[batch_idxs]
-                src_lengths = src_lengths[batch_idxs]
                 cands_to_ignore = cands_to_ignore[batch_idxs]
 
                 scores = scores.view(bsz, -1)[batch_idxs].view(new_bsz * beam_size, -1)

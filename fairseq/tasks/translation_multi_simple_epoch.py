@@ -30,7 +30,7 @@ from fairseq.tasks import LegacyFairseqTask, register_task
 from fairseq.utils import FileContentsAction
 
 from fairseq.sequence_generator import MultiPivotEnsembleModel, \
-    SequenceGeneratorWithDefault
+    MultiSourceSequenceGenerator
 
 
 EVAL_BLEU_ORDER = 4
@@ -806,7 +806,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         extra_gen_cls_kwargs=None,
     ):
         if seq_gen_cls is None:
-            seq_gen_cls = SequenceGeneratorWithDefault
+            seq_gen_cls = MultiSourceSequenceGenerator
         return super().build_generator(
             models, args, seq_gen_cls=seq_gen_cls, extra_gen_cls_kwargs=extra_gen_cls_kwargs
         )
@@ -821,7 +821,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # for now, we do hard-coded pivot languages.
 
             # for each pivot, translate src-> pivot
-            pivot_samples = []
+            net_inputs = [sample["net_input"]]
             for pivot in self.pivot_langs:
                 pivot_hypos = self._inference_step(
                     generator,
@@ -832,9 +832,9 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
                     constraints=constraints
                 )
                 pivot_sample = self._hypo_to_sample(pivot_hypos, sample)
-                pivot_samples.append(pivot_sample)
-            # you want to do stuff with the original sample too: namely,
-            # encode it
+                # pivot_samples.append(pivot_sample)
+                net_inputs.append(pivot_sample)
+            sample["net_input"] = net_inputs
 
             # now, do some stuff with sample and pivot_samples
             # this is where it would be useful to have a class that wraps
@@ -901,7 +901,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         # is it good to create on cpu and then move? seems weird
         new_sample["net_input"]["src_tokens"] = n_src_tokens.to(device)
         new_sample["net_input"]["src_lengths"] = n_src_lengths.to(device)
-        return new_sample
+        return new_sample["net_input"]
 
     def _inference_step(self, generator, models, sample, pivot, prefix_tokens=None, constraints=None):
         _, langtok_spec = self.args.langtoks["main"]
