@@ -747,13 +747,19 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         assert not training  # this task is specific to inference
         self.training = training
 
+        shared_dict = next(iter(self.dicts.values()))
+        assert all(v is shared_dict for v in self.dicts.values())
+
         # we need to add pivot langs to this
         self.lang_pairs = ["{}-{}".format(args.source_lang, args.target_lang)]
         pivot_langs = args.pivot_langs.split(",")
         self.pivot_langs = pivot_langs
         for pivot_lang in pivot_langs:
+            # add to language pairs
             self.lang_pairs.append("{}-{}".format(args.source_lang, pivot_lang))
             self.lang_pairs.append("{}-{}".format(pivot_lang, args.target_lang))
+            # add to dicts
+            self.dicts[pivot_lang] = shared_dict
 
         # eval_lang_pairs for multilingual translation is usually all of the
         # lang_pairs. However for other multitask settings or when we want to
