@@ -1290,8 +1290,11 @@ class MultiPivotEnsembleModel(nn.Module):
     """
     Not sure if this should subclass EnsembleModel
     """
-    def __init__(self, model: EnsembleModel):
-        self.model = model
+    def __init__(self, models: EnsembleModel):
+        if isinstance(models, EnsembleModel):
+            self.model = models
+        else:
+            self.model = EnsembleModel(models)
         self.has_incremental = self.model.has_incremental
 
     def has_encoder(self):
