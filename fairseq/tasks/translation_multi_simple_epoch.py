@@ -850,7 +850,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
                     tgt_lang_tok = self.data_manager.get_decoder_langtok(
                         self.args.target_lang, tgt_langtok_spec
                     )
-                    src_tokens = sample["net_input"]["src_tokens"]
+                    src_tokens = sample["net_input"][0]["src_tokens"]
                     bsz = src_tokens.size(0)
                     prefix_tokens = (
                         torch.LongTensor([[tgt_lang_tok]]).expand(bsz, 1).to(src_tokens)
