@@ -334,7 +334,7 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
                 extra_gen_cls_kwargs["symbols_to_strip_from_output"] = tgt_lang_toks
 
         return super().build_generator(
-            models, args, seq_gen_cls=None, extra_gen_cls_kwargs=extra_gen_cls_kwargs
+            models, args, seq_gen_cls=seq_gen_cls, extra_gen_cls_kwargs=extra_gen_cls_kwargs
         )
 
     def build_model(self, args):
