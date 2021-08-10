@@ -1358,7 +1358,7 @@ class MultiPivotEnsembleModel(nn.Module):
         for i, encoder_out in enumerate(encoder_outs):
             # decode each model
             if self.has_incremental_states():
-                decoder_out = self.model.forward_decoder(
+                lprobs = self.model.forward_decoder(
                     tokens,
                     encoder_outs=encoder_out,
                     incremental_states=incremental_states[i],
@@ -1366,21 +1366,14 @@ class MultiPivotEnsembleModel(nn.Module):
             else:
                 # assume we're working with the kinds of models that have
                 # encoders and decoders
-                decoder_out = self.model.forward_decoder(
+                lprobs = self.model.forward_decoder(
                     tokens, encoder_out=encoder_out
                 )
 
-            decoder_out_tuple = (
-                decoder_out[0][:, -1:, :].div_(temperature), None
-            )
-            probs = self.model.get_normalized_probs(
-                decoder_out_tuple, log_probs=True, sample=None, alpha=alpha
-            )
-            probs = probs[:, -1, :]
-            if self.models_size == 1:
-                return probs, None
+            if n_pivots == 1:
+                return lprobs, None
 
-            log_probs.append(probs)
+            log_probs.append(lprobs)
 
         avg_probs = torch.logsumexp(torch.stack(log_probs, dim=0), dim=0) - math.log(
             n_pivots
