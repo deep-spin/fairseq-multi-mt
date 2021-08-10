@@ -29,7 +29,8 @@ from fairseq.data.multilingual.sampling_method import SamplingMethod
 from fairseq.tasks import LegacyFairseqTask, register_task
 from fairseq.utils import FileContentsAction
 
-from fairseq.sequence_generator import MultiPivotEnsembleModel
+from fairseq.sequence_generator import MultiPivotEnsembleModel, \
+    DefaultSequenceGenerator
 
 
 EVAL_BLEU_ORDER = 4
@@ -797,6 +798,19 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             ), "Diffrent dictionary are specified for different target languages; "
             "TranslationMultiSimpleEpochTask only supports one shared dictionary across all target languages"
 
+    def build_generator(
+        self,
+        models,
+        args,
+        seq_gen_cls=None,
+        extra_gen_cls_kwargs=None,
+    ):
+        if seq_gen_cls is None:
+            seq_gen_cls = DefaultSequenceGenerator
+        return super().build_generator(
+            models, args, seq_gen_cls=seq_gen_cls, extra_gen_cls_kwargs=extra_gen_cls_kwargs
+        )
+
     def inference_step(
         self, generator, models, sample, prefix_tokens=None, constraints=None
     ):
@@ -811,7 +825,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             for pivot in self.pivot_langs:
                 pivot_hypos = self._inference_step(
                     generator,
-                    models,
+                    models,  # models should be a list
                     sample,
                     pivot,
                     prefix_tokens=prefix_tokens,
