@@ -1291,6 +1291,7 @@ class MultiPivotEnsembleModel(nn.Module):
     Not sure if this should subclass EnsembleModel
     """
     def __init__(self, models: EnsembleModel):
+        super().__init__()
         if isinstance(models, EnsembleModel):
             self.model = models
         else:
