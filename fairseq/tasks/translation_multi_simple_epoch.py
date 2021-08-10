@@ -661,7 +661,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
     The idea here is to overwrite inference step behavior
     """
 
-        @staticmethod
+    @staticmethod
     def add_args(parser):
         """
         Add task-specific arguments to the parser.
