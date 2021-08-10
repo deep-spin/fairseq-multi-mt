@@ -661,6 +661,134 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
     The idea here is to overwrite inference step behavior
     """
 
+        @staticmethod
+    def add_args(parser):
+        """
+        Add task-specific arguments to the parser.
+        I'm not sure if I need to include all of the args from
+        TranslationMultiSimpleEpochTask, but I'm doing so just in case
+        """
+        # fmt: off
+        parser.add_argument('-s', '--source-lang', default=None, metavar='SRC',
+                            help='inference source language')
+        parser.add_argument('-t', '--target-lang', default=None, metavar='TARGET',
+                            help='inference target language')
+        parser.add_argument('-p', '--pivot-langs', default=None, metavar='PIVOT',
+                            help="comma-separated list of pivot languages")
+        parser.add_argument('--lang-pairs', default=None, metavar='PAIRS',
+                            help='comma-separated list of language pairs (in training order): en-de,en-fr,de-fr',
+                            action=FileContentsAction)
+        parser.add_argument('--keep-inference-langtok', action='store_true',
+                            help='keep language tokens in inference output (e.g. for analysis or debugging)')
+
+        # args for "Adapters for Multilingual Speech Translation"
+        parser.add_argument('--subtask', metavar='STR', default="st",
+                            help='subtask', choices=["st", "asr", "joint_st_asr"])
+        parser.add_argument('--adapter-enc-dim', type=float, metavar='N',
+                            default=0.0, help='Adapter dimension in encoder.')
+        parser.add_argument('--adapter-enc-type', type=str,
+                            choices=[None, 'per_lang', 'shared'], default=None,
+                            help='Type of adapters in encoders (None means not used).')
+        parser.add_argument('--adapter-dec-dim', type=float, metavar='N',
+                            default=0.0, help='Adapter dimension in decoder.')
+        parser.add_argument('--adapter-dec-heads', type=float, metavar='N',
+                            default=0.0, help='Adapter heads in parallel adapter.')
+        parser.add_argument('--adapter-dec-type', type=str,
+                            choices=[None, 'per_lang', 'shared'], default=None,
+                            help='Type of adapters in encoders (None means not used).')
+        parser.add_argument('--adapter-dec-mode', type=str,
+                            choices=[None, 'serial', 'parallel'], default="serial",
+                            help='Mode of adapters in decoders (None means not used).')
+        parser.add_argument('--adapter-dec-parallel-to', type=str,
+                            choices=[None, 'self_attn', 'layer', 'cross_attn'], default="layer",
+                            help='position of parallel adapters (parallel to which block).')
+        parser.add_argument('--adapter-dec-parallel-weight', type=float, default=1.0,
+                            help='Weight to combine parallel adapters to the main branch')
+        parser.add_argument('--adapter-dec-parallel-learnable', action='store_true',
+                            help='Use learnable or fixed weight.')
+        parser.add_argument('--homogeneous-batch', action='store_true',
+                            help='Use homogeneous batch in training.')
+        # end args for "Adapters for Multilingual Speech Translation"
+
+        # args for computing BLEU (or other metrics that require decoding)
+        parser.add_argument("--eval-bleu", action="store_true",
+                            help="evaluation with BLEU scores")
+        parser.add_argument("--eval-bleu-args", type=str, default="{}",
+                            help='generation args for BLUE scoring, e.g., \'{"beam": 4, "lenpen": 0.6}\', as JSON string')
+        parser.add_argument("--eval-bleu-detok", default="space", type=str,
+                            help="""
+                            detokenize before computing BLEU (e.g., 'moses');
+                            required if using --eval-bleu; use 'space' to
+                            disable detokenization; see fairseq.data.encoders
+                            for other options""")
+        parser.add_argument("--eval-bleu-detok-args", type=str, default="{}",
+                            help="args for building the tokenizer, if needed, as JSON string")
+        parser.add_argument("--eval-tokenized-bleu", action="store_true",
+                            help="compute tokenized BLEU instead of sacrebleu")
+        parser.add_argument("--eval-bleu-remove-bpe", type=str, default=None,
+                            help="still need to figure out what to do here")
+        parser.add_argument("--eval-bleu-print-samples", action="store_true",
+                            help="print sample generations during validation")
+
+        SamplingMethod.add_arguments(parser)
+        MultilingualDatasetManager.add_args(parser)
+        # fmt: on
+
+    def __init__(self, args, langs, dicts, training):
+        """
+        Although I wanted this to have the same constructor as its parent,
+        it seems that this will not be possible because the pivot languages
+        also need to be included in the lang pairs. However, I think
+        setup_task can safely inherit.
+        """
+        super().__init__(args)
+        self.langs = langs
+        self.dicts = dicts
+        assert not training  # this task is specific to inference
+        self.training = training
+
+        # we need to add pivot langs to this
+        self.lang_pairs = ["{}-{}".format(args.source_lang, args.target_lang)]
+        for pivot_lang in args.pivot_langs.split(","):
+            self.lang_pairs.append("{}-{}".format(args.source_lang, pivot_lang))
+            self.lang_pairs.append("{}-{}".format(pivot_lang, args.target_lang))
+
+        # eval_lang_pairs for multilingual translation is usually all of the
+        # lang_pairs. However for other multitask settings or when we want to
+        # optimize for certain languages we want to use a different subset. Thus
+        # the eval_lang_pairs class variable is provided for classes that extend
+        # this class.
+        self.eval_lang_pairs = self.lang_pairs
+        # model_lang_pairs will be used to build encoder-decoder model pairs in
+        # models.build_model(). This allows multitask type of sub-class can
+        # build models other than the input lang_pairs
+        self.model_lang_pairs = self.lang_pairs
+        self.source_langs = [d.split("-")[0] for d in self.lang_pairs]
+        self.target_langs = [d.split("-")[1] for d in self.lang_pairs]
+        self.check_dicts(self.dicts, self.source_langs, self.target_langs)
+
+        self.sampling_method = SamplingMethod.build_sampler(args, self)
+        self.data_manager = MultilingualDatasetManager.setup_data_manager(
+            args, self.lang_pairs, langs, dicts, self.sampling_method
+        )
+
+    def check_dicts(self, dicts, source_langs, target_langs):
+        if self.args.source_dict is not None or self.args.target_dict is not None:
+            # no need to check whether the source side and target side are sharing dictionaries
+            return
+        src_dict = dicts[source_langs[0]]
+        tgt_dict = dicts[target_langs[0]]
+        for src_lang in source_langs:
+            assert (
+                src_dict == dicts[src_lang]
+            ), "Diffrent dictionary are specified for different source languages; "
+            "TranslationMultiSimpleEpochTask only supports one shared dictionary across all source languages"
+        for tgt_lang in target_langs:
+            assert (
+                tgt_dict == dicts[tgt_lang]
+            ), "Diffrent dictionary are specified for different target languages; "
+            "TranslationMultiSimpleEpochTask only supports one shared dictionary across all target languages"
+
     def inference_step(
         self, generator, models, sample, prefix_tokens=None, constraints=None
     ):
