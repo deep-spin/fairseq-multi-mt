@@ -780,19 +780,23 @@ class MultiSourceSequenceGenerator(SequenceGenerator):
 
         # here: multiple net_inputs (should be a list of dicts)
         net_inputs = sample["net_input"]
+        if isinstance(net_inputs, list):
+            any_net_input = net_inputs[0]
+        else:
+            any_net_input = net_inputs
 
         # what are the src_tokens for? we need their device
         # these "src_tokens" can be from any of the source sequences, it
         # doesn't matter -- they are only to make sure tensors are created on
         # the correct device
-        if "src_tokens" in net_inputs[0]:
-            src_tokens = net_inputs[0]["src_tokens"]
-        elif "source" in net_inputs[0]:
-            src_tokens = net_inputs[0]["source"]
-        elif "features" in net_inputs[0]:
-            src_tokens = net_inputs[0]["features"]
+        if "src_tokens" in any_net_input:
+            src_tokens = any_net_input["src_tokens"]
+        elif "source" in any_net_input:
+            src_tokens = any_net_input["source"]
+        elif "features" in any_net_input:
+            src_tokens = any_net_input["features"]
         else:
-            raise Exception("expected src_tokens or source in net input. input keys: " + str(net_inputs[0].keys()))
+            raise Exception("expected src_tokens or source in net input. input keys: " + str(any_net_input.keys()))
 
         # bsz: total number of sentences in beam
         # Note that src_tokens may have more than 2 dimensions (i.e. audio features)
