@@ -30,7 +30,7 @@ from fairseq.tasks import LegacyFairseqTask, register_task
 from fairseq.utils import FileContentsAction
 
 from fairseq.sequence_generator import MultiPivotEnsembleModel, \
-    DefaultSequenceGenerator
+    SequenceGeneratorWithDefault
 
 
 EVAL_BLEU_ORDER = 4
