@@ -1397,7 +1397,8 @@ class MultiPivotEnsembleModel(nn.Module):
             )
         return new_outs
         '''
-        return self.model.reorder_encoder_out(encoder_outs, new_order)
+        # return self.model.reorder_encoder_out(encoder_outs, new_order)
+        return [self.model.reorder_encoder_out(eo, new_order) for eo in encoder_outs]
 
     @torch.jit.export
     def reorder_incremental_state(
