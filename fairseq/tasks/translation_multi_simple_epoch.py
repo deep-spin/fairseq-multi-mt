@@ -741,7 +741,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         also need to be included in the lang pairs. However, I think
         setup_task can safely inherit.
         """
-        LegacyFairseqTask.__init__(args)
+        LegacyFairseqTask.__init__(self, args)
         self.langs = langs
         self.dicts = dicts
         assert not training  # this task is specific to inference
