@@ -189,50 +189,41 @@ class TranslationMultiSimpleEpochTask(LegacyFairseqTask):
         langs, dicts, training = MultilingualDatasetManager.prepare(
            cls.load_dictionary, args, **kwargs
         )
+        assert args.adapter_enc_type == args.adapter_dec_type  # practical
 
-        tgt_dict = next(iter(dicts.values()))  # assumption: single shared dict
-
-        adapter_keys = []
-        # Add adapter keys
-        if args.lang_pairs is not None:
-            langs = sorted(
-                chain.from_iterable(p.split("-") for p in args.lang_pairs)
-            )
-            lang_tags = ["__{}__".format(lang) for lang in set(langs)]
-
-            assert len(lang_tags) >= 1
-
-            # why only tgts?
-            assert args.adapter_enc_type == args.adapter_dec_type  # practical
-            for tag in lang_tags:
-                idx = tgt_dict.index(tag)  # assume shared dicts
-                logging.info(f'{tag}: {idx}')
-                if args.adapter_dec_type == 'per_lang':  # use multilingual dict
-                    assert idx != tgt_dict.unk_index
-                    adapter_keys.append(str(idx))
-                elif args.adapter_dec_type == 'shared':  # use bilingual dict
-                    adapter_keys.append(lang_tags[0])
-
-            args.adapter_keys = adapter_keys
-
-            if args.adapter_keys and len(lang_tags) > 1:
-                assert args.homogeneous_batch
-            logging.info(f'| lang_tags (src and tgt): {lang_tags}')
-            logging.info(f'| adapter_keys: {args.adapter_keys}')
-
-        '''
-        logger.info(
-            f"dictionary size ({data_cfg.vocab_filename}): " f"{len(tgt_dict):,}"
-        )
-        '''
-
-        '''
-        if getattr(args, "train_subset", None) is not None:
-            if not all(s.startswith("train") for s in args.train_subset.split(",")):
-                raise ValueError('Train splits should be named like "train*".')
-        '''
+        args.adapter_keys = cls._get_adapter_keys(args, dicts)
+        logging.info(f'| adapter_keys: {args.adapter_keys}')
 
         return cls(args, langs, dicts, training)
+
+    @classmethod
+    def _get_adapter_keys(cls, args, dicts):
+        if args.lang_pairs is None:
+            return []
+        if args.adapter_dec_type not in {"per_lang", "shared"}:
+            return []
+
+        tgt_dict = next(iter(dicts.values()))  # assumption: single shared dict
+        langs = sorted(
+            chain.from_iterable(p.split("-") for p in args.lang_pairs)
+        )
+        # does this rely on a stable ordering of set iteration
+        lang_tags = ["__{}__".format(lang) for lang in set(langs)]
+        assert len(lang_tags) >= 1
+        logging.info(f'| lang_tags (src and tgt): {lang_tags}')
+
+        adapter_keys = []
+        if args.adapter_dec_type == 'per_lang':
+            for tag in lang_tags:
+                idx = tgt_dict.index(tag)
+                logging.info(f'{tag}: {idx}')
+                assert idx != tgt_dict.unk_index
+                adapter_keys.append(str(idx))
+        else:
+            adapter_keys.extend([lang_tags[0] for _ in lang_tags])
+        if adapter_keys and len(lang_tags) > 1:
+            assert args.homogeneous_batch
+        return adapter_keys
 
     def has_sharded_data(self, split):
         return self.data_manager.has_sharded_data(split)
