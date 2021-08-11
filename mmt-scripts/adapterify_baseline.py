@@ -9,6 +9,9 @@ shared task's official baseline) was not trained with adapters. We would like
 to "plug in" the adapters we used in our finetuning experiments. In order to
 do so, we would like to overwrite the model config values relating to adapters
 so that the model is built with them.
+
+It also gets rid of paths to encoder and decoder embeddings, as these should
+not be necessary.
 """
 
 def main():
@@ -25,6 +28,8 @@ def main():
     baseline["cfg"]["model"].adapter_enc_dim = adapter["cfg"]["model"].adapter_enc_dim
     baseline["cfg"]["model"].adapter_dec_dim = adapter["cfg"]["model"].adapter_dec_dim
     baseline["cfg"]["model"].adapter_keys = adapter["cfg"]["model"].adapter_keys
+    baseline["cfg"]["model"].encoder_embed_path = None
+    baseline["cfg"]["model"].decoder_embed_path = None
     torch.save(baseline, opt.out)
 
 
