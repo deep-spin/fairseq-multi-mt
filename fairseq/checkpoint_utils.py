@@ -449,7 +449,7 @@ def load_model_ensemble_and_task(
                 model = task.build_model(cfg.model)
                 if adapter_path:
                     adapter_params = torch.load(adapter_path)
-                    for k, v in adapter_params:
+                    for k, v in adapter_params.items():
                         state["model"][k] = v
                 model.load_state_dict(
                     state["model"], strict=strict, model_cfg=cfg.model
