@@ -14,6 +14,7 @@ import traceback
 from collections import OrderedDict
 from typing import Any, Dict, Optional, Union
 from random import randint
+from itertools import product
 
 import torch
 from fairseq.dataclass.configs import CheckpointConfig
@@ -397,7 +398,7 @@ def load_model_ensemble_and_task(
     ), "Cannot load state dict with strict=True and checkpoint shards > 1"
     ensemble = []
     cfg = None
-    for filename in filenames:
+    for filename, ad_path in product(filenames, adapter_path.split(":")):
         orig_filename = filename
         model_shard_state = {"shard_weights": [], "shard_metadata": []}
         assert num_shards > 0
@@ -447,8 +448,8 @@ def load_model_ensemble_and_task(
             else:
                 # model parallel checkpoint or unsharded checkpoint
                 model = task.build_model(cfg.model)
-                if adapter_path:
-                    adapter_params = torch.load(adapter_path)
+                if ad_path:
+                    adapter_params = torch.load(ad_path)
                     for k, v in adapter_params.items():
                         state["model"][k] = v
                 model.load_state_dict(
