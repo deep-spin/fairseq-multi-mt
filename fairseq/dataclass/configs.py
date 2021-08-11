@@ -717,6 +717,10 @@ class FairseqBMUFConfig(FairseqDataclass):
 
 @dataclass
 class GenerationConfig(FairseqDataclass):
+    adapter_path: str = field(
+        default="",
+        metadata={"help": "path to pretrained adapter layers"}
+    )
     entmax_alpha: float = field(
         default=1.0,
         metadata={"help": "entmax alpha for generation"}

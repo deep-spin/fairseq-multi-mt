@@ -337,6 +337,7 @@ def load_model_ensemble(
     suffix="",
     num_shards=1,
     state=None,
+    adapter_path=""
 ):
     """Loads an ensemble of models.
 
@@ -357,6 +358,7 @@ def load_model_ensemble(
         suffix,
         num_shards,
         state,
+        adapter_path
     )
     return ensemble, args
 
@@ -384,6 +386,7 @@ def load_model_ensemble_and_task(
     suffix="",
     num_shards=1,
     state=None,
+    adapter_path=""
 ):
     assert state is None or len(filenames) == 1
 
@@ -444,6 +447,10 @@ def load_model_ensemble_and_task(
             else:
                 # model parallel checkpoint or unsharded checkpoint
                 model = task.build_model(cfg.model)
+                if adapter_path:
+                    adapter_params = torch.load(adapter_path)
+                    for k, v in adapter_params:
+                        state["model"][k] = v
                 model.load_state_dict(
                     state["model"], strict=strict, model_cfg=cfg.model
                 )
