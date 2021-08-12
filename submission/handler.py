@@ -139,7 +139,7 @@ class Handler(BaseDynaHandler):
         # alternately, could just call load_model_ensemble several times
         src_adapters = ["src_{}.pt".format(lang) for lang in task2_langs]
         tgt_adapters = ["tgt_{}.pt".format(lang) for lang in task2_langs]
-        adapter_path = ",".join(src_adapters + tgt_adapters)
+        adapter_path = ":".join(src_adapters + tgt_adapters)
         models, cfg = fairseq.checkpoint_utils.load_model_ensemble(
             [model_pt_path], task=task, adapter_path=adapter_path
         )
