@@ -125,14 +125,14 @@ def _main(cfg: DictConfig, output_file):
         lms = [None]
 
     # Optimize ensemble for generation
-    for model in chain(models, lms):
-        real_model = model[0] if isinstance(model, tuple) else model
-        if real_model is None:
+    real_models = [m[1] for m in models] if isinstance(models[0], tuple) else models
+    for model in chain(real_models, lms):
+        if model is None:
             continue
         if cfg.common.fp16:
-            real_model.half()
+            model.half()
         if use_cuda and not cfg.distributed_training.pipeline_model_parallel:
-            real_model.cuda()
+            model.cuda()
         real_model.prepare_for_inference_(cfg)
 
     # Load alignment dictionary for unknown word replacement
@@ -145,7 +145,7 @@ def _main(cfg: DictConfig, output_file):
         max_tokens=cfg.dataset.max_tokens,
         max_sentences=cfg.dataset.batch_size,
         max_positions=utils.resolve_max_positions(
-            task.max_positions(), *[m.max_positions() for m in models]
+            task.max_positions(), *[m.max_positions() for m in real_models]
         ),
         ignore_invalid_inputs=cfg.dataset.skip_invalid_size_inputs_valid_test,
         required_batch_size_multiple=cfg.dataset.required_batch_size_multiple,
