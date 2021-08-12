@@ -798,14 +798,27 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
         extra_gen_cls_kwargs=None,
     ):
         if seq_gen_cls is None:
+            # honestly, this should probably be required
             seq_gen_cls = MultiSourceSequenceGenerator
+        if isinstance(models[0], tuple):
+            default_models = [m[1] for m in models]
+        else:
+            default_models = models
         return super().build_generator(
-            models, args, seq_gen_cls=seq_gen_cls, extra_gen_cls_kwargs=extra_gen_cls_kwargs
+            default_models,
+            args,
+            seq_gen_cls=seq_gen_cls,
+            extra_gen_cls_kwargs=extra_gen_cls_kwargs
         )
 
     def inference_step(
         self, generator, models, sample, prefix_tokens=None, constraints=None
     ):
+        if isinstance(models[0], tuple):
+            all_models = [m[1] for m in models]
+        else:
+            all_models = models
+        models_to_pivot = models_to_target = all_models
         with torch.no_grad():
             # big change here: we'll need to run this code several times with
             # different tgt langtoks
@@ -817,7 +830,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             for pivot in self.pivot_langs:
                 pivot_hypos = self._inference_step(
                     generator,
-                    models,  # models should be a list
+                    models_to_pivot,
                     sample,
                     pivot,
                     prefix_tokens=prefix_tokens,
@@ -833,7 +846,8 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # around the ensemble model, and you do the final inference step
             # with that model
             # in essence, models.run_encoder(s) for s in [sample] + [pivot_samples]
-            pivot_model = MultiPivotEnsembleModel(models)
+            # the pivot model translates from several languages into the target
+            pivot_model = MultiPivotEnsembleModel(models_to_target)
 
             # translate pivots -> tgt
             _, tgt_langtok_spec = self.args.langtoks["main"]

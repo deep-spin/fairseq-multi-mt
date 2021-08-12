@@ -99,7 +99,8 @@ def _main(cfg: DictConfig, output_file):
         suffix=cfg.checkpoint.checkpoint_suffix,
         strict=(cfg.checkpoint.checkpoint_shard_count == 1),
         num_shards=cfg.checkpoint.checkpoint_shard_count,
-        adapter_path=cfg.generation.adapter_path
+        adapter_path=cfg.generation.adapter_path,
+        ensemble_labels=cfg.generation.ensemble_labels
     )
 
     # loading the dataset should happen after the checkpoint has been loaded so we can give it the saved task config
@@ -125,13 +126,14 @@ def _main(cfg: DictConfig, output_file):
 
     # Optimize ensemble for generation
     for model in chain(models, lms):
-        if model is None:
+        real_model = model[0] if isinstance(model, tuple) else model
+        if real_model is None:
             continue
         if cfg.common.fp16:
-            model.half()
+            real_model.half()
         if use_cuda and not cfg.distributed_training.pipeline_model_parallel:
-            model.cuda()
-        model.prepare_for_inference_(cfg)
+            real_model.cuda()
+        real_model.prepare_for_inference_(cfg)
 
     # Load alignment dictionary for unknown word replacement
     # (None if no unknown word replacement, empty if no path to align dictionary)

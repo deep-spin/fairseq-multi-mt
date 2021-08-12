@@ -338,7 +338,8 @@ def load_model_ensemble(
     suffix="",
     num_shards=1,
     state=None,
-    adapter_path=""
+    adapter_path="",
+    ensemble_labels=""
 ):
     """Loads an ensemble of models.
 
@@ -359,7 +360,8 @@ def load_model_ensemble(
         suffix,
         num_shards,
         state,
-        adapter_path
+        adapter_path,
+        ensemble_labels
     )
     return ensemble, args
 
@@ -387,7 +389,8 @@ def load_model_ensemble_and_task(
     suffix="",
     num_shards=1,
     state=None,
-    adapter_path=""
+    adapter_path="",
+    ensemble_labels=""
 ):
     assert state is None or len(filenames) == 1
 
@@ -398,7 +401,9 @@ def load_model_ensemble_and_task(
     ), "Cannot load state dict with strict=True and checkpoint shards > 1"
     ensemble = []
     cfg = None
-    for filename, ad_path in product(filenames, adapter_path.split(":")):
+    if ensemble_labels:
+        ensemble_labels = ensemble_labels.split(",")
+    for i, (filename, ad_path) in enumerate(product(filenames, adapter_path.split(":"))):
         orig_filename = filename
         model_shard_state = {"shard_weights": [], "shard_metadata": []}
         assert num_shards > 0
@@ -463,7 +468,11 @@ def load_model_ensemble_and_task(
                 logger.info(f"Loaded {shard_idx} shards in {elapsed:.2f}s, {elapsed / (shard_idx+1):.2f}s/shard")
 
         # build model for ensemble
-        ensemble.append(model)
+        if ensemble_labels:
+            model_name = ensemble_labels[i]
+            ensemble.append((model_name, model))
+        else:
+            ensemble.append(model)
     return ensemble, cfg, task
 
 

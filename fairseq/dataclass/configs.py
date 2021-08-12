@@ -717,6 +717,10 @@ class FairseqBMUFConfig(FairseqDataclass):
 
 @dataclass
 class GenerationConfig(FairseqDataclass):
+    ensemble_labels: str = field(
+        default="",
+        metadata={"help": "comma-delimited labels to use for ensemble names"}
+    )
     adapter_path: str = field(
         default="",
         metadata={"help": "path to pretrained adapter layers"}
