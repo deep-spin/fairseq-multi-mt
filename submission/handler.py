@@ -226,7 +226,9 @@ class Handler(BaseDynaHandler):
 
     @torch.no_grad()
     def inference(self, input_data: dict) -> list:
-        sequence_generator = self.seq_gens["en", "id"]
+        src = self.vocab.string(input_data["net_input"][0, 0])[2:4]
+        tgt = self.vocab.string(input_data["prefix_tokens"])[2:4]
+        sequence_generator = self.seq_gens[src, tgt]
         generated = sequence_generator.generate(
             models=[],
             sample=input_data,
