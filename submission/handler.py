@@ -320,7 +320,7 @@ def handle(torchserve_data, context):
         f"Deserialized a batch of size {n} ({n/(time.time()-start_time):.2f} samples / s)"
     )
     # Adapt this to your model. The GPU has 16Gb of RAM.
-    batch_size = 128
+    batch_size = 1
     results = []
     samples = []
     for i, sample in enumerate(all_samples):
