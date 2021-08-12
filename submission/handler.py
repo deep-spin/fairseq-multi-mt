@@ -111,10 +111,6 @@ class Handler(BaseDynaHandler):
         assert not config.get("dummy", False)  # don't wanna deal with this
 
         # generate.py does something like this:
-        # task = TranslationMultiSimpleEpochTask.setup_task(task_cfg)
-        # note that this solution does not handle adapter keys: a better way
-        # would probably be to write a different version of setup_task that
-        # bypasses the multilingual data manager
         shared_dict = _load_augmented_dictionary(
             "dict.txt",
             task_cfg.langs,
@@ -136,22 +132,41 @@ class Handler(BaseDynaHandler):
         # paths that we no longer have, and don't care about (for example,
         # places to load embeddings from). I solved this by manually changing
         # the values of the model config parameters in model.pt.
-        [model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
-            [model_pt_path], task=task
+        # todo: add adapter_path argument with comma-delimited paths to adapter
+        # modules.
+        # alternately, could just call load_model_ensemble several times
+        src_adapters = ["src_{}.pt".format(lang) for lang in task_cfg.langs]
+        tgt_adapters = ["tgt_{}.pt".format(lang) for lang in task_cfg.langs]
+        adapter_path = ",".join(src_adapters + tgt_adapters)
+        models, cfg = fairseq.checkpoint_utils.load_model_ensemble(
+            [model_pt_path], task=task, adapter_path=adapter_path
         )
-        model.eval().to(self.device)
+        models = [model.eval().to(self.device) for model in models]
+        src_models = models[:6]
+        tgt_models = models[6:]
         logger.info(f"Loaded model from {model_pt_path} to device {self.device}")
         logger.info(
             f"Will use the following config: {json.dumps(config, indent=4)}"
         )
-        self.sequence_generator = SequenceGenerator(
-            [model],
-            tgt_dict=self.vocab,
-            beam_size=gen_cfg.get("beam", 1),
-            max_len_a=gen_cfg.get("max_len_a", 1.3),
-            max_len_b=gen_cfg.get("max_len_b", 5),
-            min_len=gen_cfg.get("min_len", 5),
-        )
+
+        # self.seq_gens = dict()
+        # keys are language pairs,
+        # so, I have a list of models of length 12. What do I do with it to
+        # make sure the right models
+        self.seq_gens = dict()
+        for i, src_lang in task_cfg.langs:
+            for j, tgt_lang in task_cfg.langs:
+                if src_lang != tgt_lang:
+                    pair = src_lang, tgt_lang
+                    pair_models = [src_models[i]] + [tgt_models[j]]
+                    self.seq_gens[pair] = SequenceGenerator(
+                        pair_models,
+                        tgt_dict=self.vocab,
+                        beam_size=gen_cfg.get("beam", 1),
+                        max_len_a=gen_cfg.get("max_len_a", 1.3),
+                        max_len_b=gen_cfg.get("max_len_b", 5),
+                        min_len=gen_cfg.get("min_len", 5),
+                    )
 
         self.taskIO = TaskIO()
         self.initialized = True
