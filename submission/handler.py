@@ -156,8 +156,8 @@ class Handler(BaseDynaHandler):
         # so, I have a list of models of length 12. What do I do with it to
         # make sure the right models
         self.seq_gens = dict()
-        for i, src_lang in task2_langs:
-            for j, tgt_lang in task2_langs:
+        for i, src_lang in enumerate(task2_langs):
+            for j, tgt_lang in enumerate(task2_langs):
                 if src_lang != tgt_lang:
                     pair = src_lang, tgt_lang
                     pair_models = [src_models[i]] + [tgt_models[j]]
