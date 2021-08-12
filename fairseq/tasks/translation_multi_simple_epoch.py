@@ -814,11 +814,17 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
     def inference_step(
         self, generator, models, sample, prefix_tokens=None, constraints=None
     ):
+        model_keys = ["s-p{}".format(i) for i in range(len(self.pivot_langs))] + ["tgt"]
         if isinstance(models[0], tuple):
-            all_models = [m[1] for m in models]
+            model_dict = {k: [] for k in model_keys}
+            for label, model in models:
+                # a label looks like s-p1/s-p2. A slash means it is used for
+                # both of those directions
+                for direction in label.split("/"):
+                    model_dict[direction].append(model)
         else:
-            all_models = models
-        models_to_pivot = models_to_target = all_models
+            model_dict = {k: models for k in model_keys}
+
         with torch.no_grad():
             # big change here: we'll need to run this code several times with
             # different tgt langtoks
@@ -827,7 +833,10 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
 
             # for each pivot, translate src-> pivot
             net_inputs = [sample["net_input"]]
-            for pivot in self.pivot_langs:
+            for i, pivot in enumerate(self.pivot_langs):
+                # what models to use for src to this pivot?
+                # ones that are labeled from source or to pivot_i
+                models_to_pivot = model_dict["s-p{}".format(i)]
                 pivot_hypos = self._inference_step(
                     generator,
                     models_to_pivot,
@@ -837,7 +846,6 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
                     constraints=constraints
                 )
                 pivot_sample = self._hypo_to_sample(pivot_hypos, sample)
-                # pivot_samples.append(pivot_sample)
                 net_inputs.append(pivot_sample)
             sample["net_input"] = net_inputs
 
@@ -847,7 +855,7 @@ class TranslationPivotEnsembleTask(TranslationMultiSimpleEpochTask):
             # with that model
             # in essence, models.run_encoder(s) for s in [sample] + [pivot_samples]
             # the pivot model translates from several languages into the target
-            pivot_model = MultiPivotEnsembleModel(models_to_target)
+            pivot_model = MultiPivotEnsembleModel(model_dict["tgt"])
 
             # translate pivots -> tgt
             _, tgt_langtok_spec = self.args.langtoks["main"]
