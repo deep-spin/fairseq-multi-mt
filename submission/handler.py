@@ -128,6 +128,8 @@ class Handler(BaseDynaHandler):
             True
         )
 
+        task2_langs = ["en", "id", "jv", "ms", "ta", "tl"]
+
         # now: problem with model loading: the model config includes some
         # paths that we no longer have, and don't care about (for example,
         # places to load embeddings from). I solved this by manually changing
@@ -135,8 +137,8 @@ class Handler(BaseDynaHandler):
         # todo: add adapter_path argument with comma-delimited paths to adapter
         # modules.
         # alternately, could just call load_model_ensemble several times
-        src_adapters = ["src_{}.pt".format(lang) for lang in task_cfg.langs]
-        tgt_adapters = ["tgt_{}.pt".format(lang) for lang in task_cfg.langs]
+        src_adapters = ["src_{}.pt".format(lang) for lang in task2_langs]
+        tgt_adapters = ["tgt_{}.pt".format(lang) for lang in task2_langs]
         adapter_path = ",".join(src_adapters + tgt_adapters)
         models, cfg = fairseq.checkpoint_utils.load_model_ensemble(
             [model_pt_path], task=task, adapter_path=adapter_path
@@ -154,8 +156,8 @@ class Handler(BaseDynaHandler):
         # so, I have a list of models of length 12. What do I do with it to
         # make sure the right models
         self.seq_gens = dict()
-        for i, src_lang in task_cfg.langs:
-            for j, tgt_lang in task_cfg.langs:
+        for i, src_lang in task2_langs:
+            for j, tgt_lang in task2_langs:
                 if src_lang != tgt_lang:
                     pair = src_lang, tgt_lang
                     pair_models = [src_models[i]] + [tgt_models[j]]
