@@ -198,10 +198,8 @@ class Handler(BaseDynaHandler):
         prev_src, prev_tgt = self._current_pair
         if src_lang != prev_src:
             self.src_model.load_state_dict(self.src_adapters[src_lang], strict=False)
-            new_src = src_lang
         if tgt_lang != prev_tgt:
             self.tgt_model.load_state_dict(self.tgt_adapters[tgt_lang], strict=False)
-            new_tgt = tgt_lang
         self._current_pair = new_src, new_tgt
 
     def _generate_sequence(self, src_lang, tgt_lang, input_data):
