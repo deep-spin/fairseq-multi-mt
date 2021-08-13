@@ -137,24 +137,34 @@ class Handler(BaseDynaHandler):
         # todo: add adapter_path argument with comma-delimited paths to adapter
         # modules.
         # alternately, could just call load_model_ensemble several times
-        src_adapters = ["src_{}.pt".format(lang) for lang in task2_langs]
-        tgt_adapters = ["tgt_{}.pt".format(lang) for lang in task2_langs]
-        adapter_path = ":".join(src_adapters + tgt_adapters)
-        models, cfg = fairseq.checkpoint_utils.load_model_ensemble(
-            [model_pt_path], task=task, adapter_path=adapter_path
+        src_adapter_paths = ["src-{}.pt".format(lang) for lang in task2_langs]
+        tgt_adapter_paths = ["tgt-{}.pt".format(lang) for lang in task2_langs]
+
+        self.src_adapters = dict()
+        self.tgt_adapters = dict()
+        for lang in task2_langs:
+            self.src_adapters[lang] = torch.load("src-{}.pt".format(lang), map_location=self.device)
+            self.tgt_adapters[lang] = torch.load("tgt-{}.pt".format(lang), map_location=self.device)
+
+        # load one and only *one* of the sets of adapter params with each of
+        # the source and checkpoint.
+        [self.src_model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
+            [model_pt_path], task=task, adapter_path=src_adapter_paths[0]
         )
-        models = [model.eval().to(self.device) for model in models]
-        src_models = models[:6]
-        tgt_models = models[6:]
+        [self.tgt_model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
+            [model_pt_path], task=task, adapter_path=tgt_adapter_paths[0]
+        )
+
+        # we need to load the model twice because we're doing ensembles of
+        # two models. But only twice!
+        self.src_model.eval().to(self.device)
+        self.tgt_model.eval().to(self.device)
+
         logger.info(f"Loaded model from {model_pt_path} to device {self.device}")
         logger.info(
             f"Will use the following config: {json.dumps(config, indent=4)}"
         )
-
-        # self.seq_gens = dict()
-        # keys are language pairs,
-        # so, I have a list of models of length 12. What do I do with it to
-        # make sure the right models
+        '''
         self.seq_gens = dict()
         for i, src_lang in enumerate(task2_langs):
             for j, tgt_lang in enumerate(task2_langs):
@@ -169,9 +179,27 @@ class Handler(BaseDynaHandler):
                         max_len_b=gen_cfg.get("max_len_b", 5),
                         min_len=gen_cfg.get("min_len", 5),
                     )
+        '''
+        self.sequence_generator = SequenceGenerator(
+            [self.src_model],  # just a default
+            tgt_dict=self.vocab,
+            beam_size=gen_cfg.get("beam", 1),
+            max_len_a=gen_cfg.get("max_len_a", 1.3),
+            max_len_b=gen_cfg.get("max_len_b", 5),
+            min_len=gen_cfg.get("min_len", 5),
+        )
 
         self.taskIO = TaskIO()
         self.initialized = True
+
+    def _generate_sequence(self, src_lang, tgt_lang, input_data):
+        self.src_model.load_state_dict(self.src_adapters[src_lang], strict=False)
+        self.tgt_model.load_state_dict(self.tgt_adapters[tgt_lang], strict=False)
+        return self.sequence_generator.generate(
+            models=[self.src_model, self.tgt_model],
+            sample=input_data,
+            prefix_tokens=input_data["prefix_tokens"],
+        )
 
     def lang_token(self, lang: str) -> int:
         """Converts the ISO 639-3 language code to MM100 language codes."""
@@ -228,12 +256,7 @@ class Handler(BaseDynaHandler):
     def inference(self, input_data: dict) -> list:
         src = self.vocab.string(input_data["net_input"]["src_tokens"][0, 0])[2:4]
         tgt = self.vocab.string(input_data["prefix_tokens"])[2:4]
-        sequence_generator = self.seq_gens[src, tgt]
-        generated = sequence_generator.generate(
-            models=[],
-            sample=input_data,
-            prefix_tokens=input_data["prefix_tokens"],
-        )
+        generated = self._generate_sequence(src, tgt, input_data)
         # `generate` returns a list of samples
         # with several hypothesis per sample
         # and a dict per hypothesis.
