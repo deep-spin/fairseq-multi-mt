@@ -13,7 +13,7 @@ import torch
 from typing import NamedTuple
 from dynalab.handler.base_handler import BaseDynaHandler
 from dynalab.tasks.flores_small1 import TaskIO
-from fairseq.sequence_generator import SequenceGenerator
+from fairseq.sequence_generator import MultiSourceSequenceGenerator
 from fairseq.tasks.translation import TranslationTask
 from fairseq.tasks.translation_multi_simple_epoch import TranslationMultiSimpleEpochTask
 from fairseq.data import data_utils
@@ -182,7 +182,7 @@ class Handler(BaseDynaHandler):
                         min_len=gen_cfg.get("min_len", 5),
                     )
         '''
-        self.sequence_generator = SequenceGenerator(
+        self.sequence_generator = MultiSourceSequenceGenerator(
             [self.src_model],  # just a default
             tgt_dict=self.vocab,
             beam_size=gen_cfg.get("beam", 1),
