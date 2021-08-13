@@ -352,6 +352,15 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
         return cls(args, encoder, decoder)
 
+    def load_adapter(self, adapter_params):
+        """
+        Update model with parameters from an adapter (should be a list of key-
+        value pairs)
+        """
+        for n, p in self.named_parameters():
+            if n in adapter_params:
+                p.data = adapter_params[n]
+
     @classmethod
     def build_embedding(cls, args, dictionary, embed_dim, path=None):
         num_embeddings = len(dictionary)
