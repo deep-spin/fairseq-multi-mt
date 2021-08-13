@@ -6,6 +6,7 @@ import time
 import os
 from pathlib import Path
 from argparse import Namespace
+from collections import defaultdict
 
 import fairseq.checkpoint_utils
 import sentencepiece
@@ -356,14 +357,28 @@ def handle(torchserve_data, context):
     # Adapt this to your model. The GPU has 16Gb of RAM.
     max_batch_size = 32
     results = []
-    samples = []
+    samples = defaultdict(list)
+    samples_seen = 0
     for i, sample in enumerate(all_samples):
-        samples.append(sample)
-        if len(samples) < max_batch_size and i + 1 < n:
+        pair = sample["sourceLanguage"], sample["targetLanguage"]
+        samples[pair].append((samples_seen, sample))
+        samples_seen += 1  # sum of lengths of values in samples dict
+        if samples_seen < max_batch_size and i + 1 < n:
             continue
 
-        results.extend(handle_mini_batch(_service, samples))
-        samples = []
+        batch_results = [None for j in range(samples_seen)]
+        for p, ix_pair_samples in samples.items():
+            ix, pair_samples = zip(*ix_pair_samples)
+            # list of indices by which to sort the samples
+            pair_batch_results = handle_mini_batch(_service, pair_samples)
+            for j in ix:
+                batch_results[j] = pair_batch_results
+
+        results.extend(batch_results)
+
+        # results.extend(handle_mini_batch(_service, samples))
+        samples_seen = 0
+        samples = defaultdict(list)
 
     assert len(results)
     start_time = time.time()
