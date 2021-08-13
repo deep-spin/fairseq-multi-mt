@@ -5,9 +5,22 @@
     "requirements": true,
     "setup": false,
     "model_files": [
-        "model_generation.json",
+    	"model_generation.json",
         "dict.txt",
-        "sentencepiece.bpe.model"
+        "sentencepiece.bpe.model",
+        "src_en.pt",
+        "src_id.pt",
+        "src_jv.pt",
+        "src_ms.pt",
+        "src_ta.pt",
+        "src_tl.pt",
+        "tgt_en.pt",
+        "tgt_id.pt",
+        "tgt_jv.pt",
+        "tgt_ms.pt",
+        "tgt_ta.pt",
+        "tgt_tl.pt"
     ],
     "exclude": []
 }
+
