@@ -200,7 +200,7 @@ class Handler(BaseDynaHandler):
             self.src_model.load_state_dict(self.src_adapters[src_lang], strict=False)
         if tgt_lang != prev_tgt:
             self.tgt_model.load_state_dict(self.tgt_adapters[tgt_lang], strict=False)
-        self._current_pair = new_src, new_tgt
+        self._current_pair = src_lang, tgt_lang
 
     def _generate_sequence(self, src_lang, tgt_lang, input_data):
         self._set_adapters(src_lang, tgt_lang)
