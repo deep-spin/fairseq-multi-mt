@@ -155,6 +155,8 @@ class Handler(BaseDynaHandler):
             [model_pt_path], task=task, adapter_path=tgt_adapter_paths[0]
         )
 
+        self._current_pair = task2_langs[0], task2_langs[0]
+
         # we need to load the model twice because we're doing ensembles of
         # two models. But only twice!
         self.src_model.eval().to(self.device)
@@ -192,9 +194,18 @@ class Handler(BaseDynaHandler):
         self.taskIO = TaskIO()
         self.initialized = True
 
+    def _set_adapters(self, src_lang, tgt_lang):
+        prev_src, prev_tgt = self._current_pair
+        if src_lang != prev_src:
+            self.src_model.load_state_dict(self.src_adapters[src_lang], strict=False)
+            new_src = src_lang
+        if tgt_lang != prev_tgt:
+            self.tgt_model.load_state_dict(self.tgt_adapters[tgt_lang], strict=False)
+            new_tgt = tgt_lang
+        self._current_pair = new_src, new_tgt
+
     def _generate_sequence(self, src_lang, tgt_lang, input_data):
-        self.src_model.load_state_dict(self.src_adapters[src_lang], strict=False)
-        self.tgt_model.load_state_dict(self.tgt_adapters[tgt_lang], strict=False)
+        self._set_adapters(src_lang, tgt_lang)
         return self.sequence_generator.generate(
             models=[self.src_model, self.tgt_model],
             sample=input_data,
@@ -345,12 +356,12 @@ def handle(torchserve_data, context):
         f"Deserialized a batch of size {n} ({n/(time.time()-start_time):.2f} samples / s)"
     )
     # Adapt this to your model. The GPU has 16Gb of RAM.
-    batch_size = 1
+    max_batch_size = 32
     results = []
     samples = []
     for i, sample in enumerate(all_samples):
         samples.append(sample)
-        if len(samples) < batch_size and i + 1 < n:
+        if len(samples) < max_batch_size and i + 1 < n:
             continue
 
         results.extend(handle_mini_batch(_service, samples))
