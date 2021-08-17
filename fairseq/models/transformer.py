@@ -6,7 +6,6 @@
 import math
 import logging
 from typing import Any, Dict, List, Optional, Tuple
-from pathlib import Path
 import os
 
 import torch
@@ -407,7 +406,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
             discard_pretrained_emb = getattr(
                 args, "discard_pretrained_decoder_embeddings", False
             )
-            
+
             if os.path.isfile(pretraining_path):
                 # Load the checkpoint and check for potential dimension mismatches
                 state_dict = checkpoint_utils.load_checkpoint_to_cpu(pretraining_path)
@@ -670,13 +669,7 @@ class TransformerEncoder(FairseqEncoder):
                   hidden states of shape `(src_len, batch, embed_dim)`.
                   Only populated if *return_all_hiddens* is True.
         """
-        if len(self.args.adapter_keys) == 1:
-            adapter_key = self.args.adapter_keys[0]
-        elif len(self.args.adapter_keys) > 1:
-            # hacky way to get src langid
-            adapter_key = str(src_tokens[0, 0].item())
-        else:
-            adapter_key = None
+        adapter_key = self._get_adapter_key(src_tokens)
 
         # compute padding mask
         encoder_padding_mask = src_tokens.eq(self.padding_idx)
@@ -722,6 +715,18 @@ class TransformerEncoder(FairseqEncoder):
             "src_tokens": [],
             "src_lengths": [],
         }
+
+    def _get_adapter_key(self, src_tokens):
+        adapter_keys = self.args.adapter_keys
+
+        if len(adapter_keys) == 1:
+            key = adapter_keys[0]
+        elif len(adapter_keys) > 1:
+            # hacky way to get src langid
+            key = str(src_tokens[0, 0].item())
+        else:
+            key = None
+        return key
 
     @torch.jit.export
     def reorder_encoder_out(self, encoder_out: Dict[str, List[Tensor]], new_order):
@@ -1059,12 +1064,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
         """
         bs, slen = prev_output_tokens.size()
 
-        adapter_key = None
-        if getattr(self.args, "adapter_keys", None) is not None: # backward compatibility
-            if len(self.args.adapter_keys) == 1:
-                adapter_key = self.args.adapter_keys[0]
-            elif len(self.args.adapter_keys) > 1 and prev_output_tokens[:, 1:2].shape[1] != 0:
-                adapter_key = str(prev_output_tokens[:, 1:2][0].item())
+        adapter_key = self._get_adapter_key(prev_output_tokens)
 
         if alignment_layer is None:
             alignment_layer = self.num_layers - 1
@@ -1156,6 +1156,17 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             x = self.project_out_dim(x)
 
         return x, {"attn": [attn], "inner_states": inner_states}
+
+    def _get_adapter_key(self, prev_output_tokens):
+        adapter_keys = getattr(self.args, "adapter_keys", None)
+        key = None
+        if adapter_keys is not None: # backward compatibility
+            if len(adapter_keys) == 1:
+                key = adapter_keys[0]
+            elif len(adapter_keys) > 1 and prev_output_tokens[:, 1:2].shape[1] != 0:
+                key = str(prev_output_tokens[:, 1:2][0].item())
+
+        return key
 
     def output_layer(self, features):
         """Project features to the vocabulary size."""
