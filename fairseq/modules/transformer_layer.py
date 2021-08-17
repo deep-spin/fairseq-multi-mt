@@ -4,8 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import Dict, List, Optional
-import logging
-
+from functools import partial
 import torch
 import torch.nn as nn
 from fairseq import utils
@@ -49,7 +48,9 @@ class TransformerEncoderLayer(nn.Module):
         self.adapter_parallel_weight = getattr(args, 'adapter_dec_parallel_weight', 1.0)
         self.adapter_parallel_learnable = getattr(args, 'adapter_dec_parallel_learnable', False)
         if self.adapter_parallel_learnable:
-            self.adapter_parallel_weight = nn.Parameter(torch.tensor(self.adapter_parallel_weight))
+            self.adapter_parallel_weight = nn.Parameter(
+                torch.tensor(self.adapter_parallel_weight)
+            )
 
         self.self_attn = self.build_self_attention(self.embed_dim, args)
         export = getattr(args, "export", False)
@@ -62,7 +63,7 @@ class TransformerEncoderLayer(nn.Module):
         )
         activation_dropout_p = getattr(args, "activation_dropout", 0) or 0
         if activation_dropout_p == 0:
-            # for backwards compatibility with models that use args.relu_dropout
+            # for backwards compatibility with models with args.relu_dropout
             activation_dropout_p = getattr(args, "relu_dropout", 0) or 0
         self.activation_dropout_module = FairseqDropout(
             float(activation_dropout_p), module_name=self.__class__.__name__
@@ -93,12 +94,16 @@ class TransformerEncoderLayer(nn.Module):
 
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
         return quant_noise(
-            nn.Linear(input_dim, output_dim), p=q_noise, block_size=qn_block_size
+            nn.Linear(input_dim, output_dim),
+            p=q_noise,
+            block_size=qn_block_size
         )
 
     def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
         return quant_noise(
-            nn.Linear(input_dim, output_dim), p=q_noise, block_size=qn_block_size
+            nn.Linear(input_dim, output_dim),
+            p=q_noise,
+            block_size=qn_block_size
         )
 
     def build_self_attention(self, embed_dim, args):
@@ -111,25 +116,24 @@ class TransformerEncoderLayer(nn.Module):
             qn_block_size=self.quant_noise_block_size,
         )
 
-    def build_adapters(self, adapter_keys, adapter_dim, input_dim, 
-                        adapter_mode="serial", adapter_heads=0, shared=False):
+    def build_adapters(self, adapter_keys, adapter_dim, input_dim,
+                       adapter_mode="serial", adapter_heads=0, shared=False):
         if not adapter_keys:
             return None
-        
+
         if adapter_mode == "serial":
-            if shared:
-                adapter = Adapter(input_dim, adapter_dim)
-                return nn.ModuleDict({k: adapter for k in adapter_keys})
-            return nn.ModuleDict({k: Adapter(input_dim, adapter_dim)
-                                        for k in adapter_keys})
+            adapter_cls = Adapter
         elif adapter_mode == "parallel":
-            if shared:
-                adapter = AdapterMHA(input_dim, adapter_dim, adapter_heads)
-                return nn.ModuleDict({k: adapter for k in adapter_keys})
-            return nn.ModuleDict({k: AdapterMHA(input_dim, adapter_dim, adapter_heads)
-                                        for k in adapter_keys})
+            adapter_cls = partial(AdapterMHA, num_heads=adapter_heads)
         else:
             raise NotImplementedError
+
+        if shared:
+            adapter = adapter_cls(input_dim, adapter_dim)
+            return nn.ModuleDict({k: adapter for k in adapter_keys})
+        return nn.ModuleDict(
+            {k: adapter_cls(input_dim, adapter_dim) for k in adapter_keys}
+        )
 
     def residual_connection(self, x, residual):
         return residual + x
@@ -148,8 +152,8 @@ class TransformerEncoderLayer(nn.Module):
                     state_dict["{}.{}.{}".format(name, new, m)] = state_dict[k]
                     del state_dict[k]
 
-    def forward(self, x, encoder_padding_mask, attn_mask: Optional[Tensor] = None,
-                adapter_key: str = None):
+    def forward(self, x, encoder_padding_mask,
+                attn_mask: Optional[Tensor] = None, adapter_key: str = None):
         """
         Args:
             x (Tensor): input to the layer of shape `(seq_len, batch, embed_dim)`
@@ -168,8 +172,8 @@ class TransformerEncoderLayer(nn.Module):
         # anything in original attn_mask = 1, becomes -1e8
         # anything in original attn_mask = 0, becomes 0
         # Note that we cannot use -inf here, because at some edge cases,
-        # the attention weight (before softmax) for some padded element in query
-        # will become -inf, which results in NaN in model parameters
+        # the attention weight (before softmax) for some padded element in
+        # query will become -inf, which results in NaN in model parameters
         use_adapter = self.adapters and adapter_key
         if attn_mask is not None:
             attn_mask = attn_mask.masked_fill(attn_mask.to(torch.bool), -1e8)
@@ -186,7 +190,9 @@ class TransformerEncoderLayer(nn.Module):
             attn_mask=attn_mask,
         )
         if use_adapter and self.adapter_mode == "parallel":
-            z = self.adapters[adapter_key](residual, 
+            # this seems wasteful: z seems to only be used if
+            # self.adapter_parallel_to == "self_attn"
+            z = self.adapters[adapter_key](residual,
                                            key_padding_mask=encoder_padding_mask,
                                            attn_mask=attn_mask)
             if self.adapter_parallel_to == "self_attn":
@@ -217,9 +223,9 @@ class TransformerDecoderLayer(nn.Module):
     In the original paper each operation (multi-head attention, encoder
     attention or FFN) is postprocessed with: `dropout -> add residual ->
     layernorm`. In the tensor2tensor code they suggest that learning is more
-    robust when preprocessing each layer with layernorm and postprocessing with:
-    `dropout -> add residual`. We default to the approach in the paper, but the
-    tensor2tensor approach can be enabled by setting
+    robust when preprocessing each layer with layernorm and postprocessing
+    with: `dropout -> add residual`. We default to the approach in the paper,
+    but the tensor2tensor approach can be enabled by setting
     *args.decoder_normalize_before* to ``True``.
 
     Args:
@@ -275,7 +281,7 @@ class TransformerDecoderLayer(nn.Module):
         )
         activation_dropout_p = getattr(args, "activation_dropout", 0) or 0
         if activation_dropout_p == 0:
-            # for backwards compatibility with models that use args.relu_dropout
+            # for backwards compatibility with models with args.relu_dropout
             activation_dropout_p = getattr(args, "relu_dropout", 0) or 0
         self.activation_dropout_module = FairseqDropout(
             float(activation_dropout_p), module_name=self.__class__.__name__
@@ -289,8 +295,12 @@ class TransformerDecoderLayer(nn.Module):
             self.encoder_attn = None
             self.encoder_attn_layer_norm = None
         else:
-            self.encoder_attn = self.build_encoder_attention(self.embed_dim, args)
-            self.encoder_attn_layer_norm = LayerNorm(self.embed_dim, export=export)
+            self.encoder_attn = self.build_encoder_attention(
+                self.embed_dim, args
+            )
+            self.encoder_attn_layer_norm = LayerNorm(
+                self.embed_dim, export=export
+            )
 
         self.fc1 = self.build_fc1(
             self.embed_dim,
@@ -342,25 +352,24 @@ class TransformerDecoderLayer(nn.Module):
             qn_block_size=self.quant_noise_block_size,
         )
 
-    def build_adapters(self, adapter_keys, adapter_dim, input_dim, 
-                        adapter_mode="serial", adapter_heads=0, shared=False):
+    def build_adapters(self, adapter_keys, adapter_dim, input_dim,
+                       adapter_mode="serial", adapter_heads=0, shared=False):
         if not adapter_keys:
             return None
-        
+
         if adapter_mode == "serial":
-            if shared:
-                adapter = Adapter(input_dim, adapter_dim)
-                return nn.ModuleDict({k: adapter for k in adapter_keys})
-            return nn.ModuleDict({k: Adapter(input_dim, adapter_dim)
-                                        for k in adapter_keys})
+            adapter_cls = Adapter
         elif adapter_mode == "parallel":
-            if shared:
-                adapter = AdapterMHA(input_dim, adapter_dim, adapter_heads)
-                return nn.ModuleDict({k: adapter for k in adapter_keys})
-            return nn.ModuleDict({k: AdapterMHA(input_dim, adapter_dim, adapter_heads)
-                                        for k in adapter_keys})
+            adapter_cls = partial(AdapterMHA, num_heads=adapter_heads)
         else:
             raise NotImplementedError
+
+        if shared:
+            adapter = adapter_cls(input_dim, adapter_dim)
+            return nn.ModuleDict({k: adapter for k in adapter_keys})
+        return nn.ModuleDict(
+            {k: adapter_cls(input_dim, adapter_dim) for k in adapter_keys}
+        )
 
     def prepare_for_onnx_export_(self):
         self.onnx_trace = True
@@ -452,7 +461,7 @@ class TransformerDecoderLayer(nn.Module):
             x = self.self_attn_layer_norm(x)
 
         if use_adapter and self.adapter_mode == "parallel" and self.adapter_parallel_to != "cross_attn":
-            z = self.adapters[adapter_key](residual, 
+            z = self.adapters[adapter_key](residual,
                                            key_padding_mask=self_attn_padding_mask,
                                            attn_mask=self_attn_mask)
             if self.adapter_parallel_to == "self_attn":
@@ -489,9 +498,9 @@ class TransformerDecoderLayer(nn.Module):
                 x = self.encoder_attn_layer_norm(x)
 
             if use_adapter and self.adapter_mode == "parallel" and self.adapter_parallel_to == "cross_attn":
-                z = self.adapters[adapter_key](residual, 
-                                            key_padding_mask=self_attn_padding_mask,
-                                            attn_mask=self_attn_mask)
+                z = self.adapters[adapter_key](residual,
+                                               key_padding_mask=self_attn_padding_mask,
+                                               attn_mask=self_attn_mask)
                 x = x + self.adapter_parallel_weight * z
 
         residual = x
