@@ -396,7 +396,7 @@ def local_test():
     torchserve_data = [{"body": bin_data}]
 
     manifest = {"model": {"serializedFile": "model.pt"}}
-    system_properties = {"model_dir": ".", "gpu_id": None}
+    system_properties = {"model_dir": ".", "gpu_id": 0}
 
     class Context(NamedTuple):
         system_properties: dict
