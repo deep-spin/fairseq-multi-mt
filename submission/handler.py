@@ -142,9 +142,17 @@ class Handler(BaseDynaHandler):
 
         self.src_adapters = dict()
         self.tgt_adapters = dict()
+
+        def _load_adapter(path, map_location, half=False):
+            adapter_dict = torch.load("src-{}.pt".format(lang), map_location=self.device)
+            if half:
+                for k, v in adapter_dict.items():
+                    adapter_dict[k] = v.half()
+            return adapter_dict
+
         for lang in task2_langs:
-            self.src_adapters[lang] = torch.load("src-{}.pt".format(lang), map_location=self.device)
-            self.tgt_adapters[lang] = torch.load("tgt-{}.pt".format(lang), map_location=self.device)
+            self.src_adapters[lang] = _load_adapter("src-{}.pt".format(lang), self.device, True)
+            self.tgt_adapters[lang] = _load_adapter("tgt-{}.pt".format(lang), self.device, True)
 
         # load one and only *one* of the sets of adapter params with each of
         # the source and checkpoint.
@@ -154,6 +162,8 @@ class Handler(BaseDynaHandler):
         [self.tgt_model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
             [model_pt_path], task=task, adapter_path=tgt_adapter_paths[0]
         )
+        self.src_model.half()
+        self.tgt_model.half()
 
         self._current_pair = task2_langs[0], task2_langs[0]
 
@@ -161,6 +171,7 @@ class Handler(BaseDynaHandler):
         # two models. But only twice!
         self.src_model.eval().to(self.device)
         self.tgt_model.eval().to(self.device)
+        # I'm not sure if I'm using fp16. I need to make sure I am
 
         logger.info(f"Loaded model from {model_pt_path} to device {self.device}")
         logger.info(
@@ -350,22 +361,24 @@ def handle(torchserve_data, context):
         return None
 
     start_time = time.time()
-    all_samples = deserialize(torchserve_data)
-    n = len(all_samples)
+    samples = deserialize(torchserve_data)
+    # frustrating thing is that I don't know how big these deserialized blocks
+    # are, or which language pairs I'm using
+    n = len(samples)
     logger.info(
         f"Deserialized a batch of size {n} ({n/(time.time()-start_time):.2f} samples / s)"
     )
     # Adapt this to your model. The GPU has 16Gb of RAM.
     max_batch_size = 1
     results = []
-    samples = []
-    for i, sample in enumerate(all_samples):
-        samples.append(sample)
-        if len(samples) < max_batch_size and i + 1 < n:
+    batch_samples = []
+    for i, sample in enumerate(samples):
+        batch_samples.append(sample)
+        if len(batch_samples) < max_batch_size and i + 1 < n:
             continue
 
-        results.extend(handle_mini_batch(_service, samples))
-        samples = []
+        results.extend(handle_mini_batch(_service, batch_samples))
+        batch_samples = []
 
     assert len(results)
     start_time = time.time()
