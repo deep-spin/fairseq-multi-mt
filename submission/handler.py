@@ -425,7 +425,6 @@ def local_test():
     parser.add_argument("test_pickle", default="test_data.pickle")
     opt = parser.parse_args()
 
-    # bin_data = b"\n".join(json.dumps(d).encode("utf-8") for d in flores_small2.data)
     test_data = _load_test_data(opt.test_pickle)
     bin_data = b"\n".join(test_data)
     torchserve_data = [{"body": bin_data}]
@@ -440,12 +439,19 @@ def local_test():
     ctx = Context(system_properties, manifest)
     batch_responses = handle(torchserve_data, ctx)
     print(batch_responses)
+    split_batch_responses = batch_responses[0].split("\n")
 
+    for i, test_ex in enumerate(test_data):
+        single_response = handle([{"body": test_ex}], ctx)[0]
+        assert split_batch_responses[i] == single_response
+
+    '''
     single_responses = [
         handle([{"body": test_ex}], ctx)[0]
         for test_ex in test_data
     ]
     assert batch_responses == ["\n".join(single_responses)]
+    '''
 
 
 if __name__ == "__main__":
