@@ -369,6 +369,9 @@ def handle(torchserve_data, context):
         f"Deserialized a batch of size {n} ({n/(time.time()-start_time):.2f} samples / s)"
     )
     # Adapt this to your model. The GPU has 16Gb of RAM.
+
+    # samples should be sorted by language pair, but in a way that allows the
+    # original order to be recovered
     max_batch_size = 1
     results = []
     batch_samples = []
@@ -390,6 +393,7 @@ def handle(torchserve_data, context):
 
 
 def _load_test_data(path):
+    import pickle
     with open(path, "rb") as f:
         unpickled = pickle.load(f, encoding="utf-8")
         test_data = [json.dumps(d).encode("utf-8") for d in unpickled]
@@ -397,7 +401,6 @@ def _load_test_data(path):
 
 
 def local_test():
-    import pickle
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("test_pickle", default="test_data.pickle")
