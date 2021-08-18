@@ -6,6 +6,7 @@ import time
 import os
 from pathlib import Path
 from argparse import Namespace
+import pickle
 
 import fairseq.checkpoint_utils
 import sentencepiece
