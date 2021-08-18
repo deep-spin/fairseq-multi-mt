@@ -344,7 +344,7 @@ def handle_mini_batch(service, samples):
     start_time = time.time()
     output = service.inference(input_data)
     logger.info(
-        f"Infered a batch of size {n} ({n/(time.time()-start_time):.2f} samples / s)"
+        f"Inferred a batch of size {n} ({n/(time.time()-start_time):.2f} samples / s)"
     )
 
     start_time = time.time()
@@ -438,12 +438,17 @@ def local_test():
 
     ctx = Context(system_properties, manifest)
     batch_responses = handle(torchserve_data, ctx)
-    print(batch_responses)
     split_batch_responses = batch_responses[0].split("\n")
 
     for i, test_ex in enumerate(test_data):
         single_response = handle([{"body": test_ex}], ctx)[0]
-        assert split_batch_responses[i] == single_response
+        if split_batch_responses[i] != single_response:
+            print("mismatch on example {}".format(i))
+            print(test_ex)
+            print("batch response:")
+            print(split_batch_responses[i])
+            print("single response:")
+            print(single_response)
 
     '''
     single_responses = [
