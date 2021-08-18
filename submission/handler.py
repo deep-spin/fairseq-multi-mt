@@ -394,7 +394,7 @@ def handle(torchserve_data, context):
 
     # batch separately within each group
     results = [None for i in range(len(samples))]
-    max_batch_size = 16
+    max_batch_size = 8
     for pair, pair_samples in samples_by_pair.items():
         for batch in _batches(pair_samples, max_batch_size):
             batch_ix, batch_samples = zip(*batch)
