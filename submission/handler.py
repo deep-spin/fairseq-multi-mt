@@ -390,7 +390,7 @@ def handle(torchserve_data, context):
     samples_by_pair = defaultdict(list)
     for i, sample in enumerate(samples):
         pair = sample["sourceLanguage"], sample["targetLanguage"]
-        samples_by_pair[pair].append(i, sample)
+        samples_by_pair[pair].append((i, sample))
 
     # batch separately within each group
     results = [None for i in range(len(samples))]
