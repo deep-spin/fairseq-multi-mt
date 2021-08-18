@@ -6,6 +6,7 @@ import time
 import os
 from pathlib import Path
 from argparse import Namespace
+from collections import defaultdict
 
 import fairseq.checkpoint_utils
 import sentencepiece
@@ -354,6 +355,21 @@ def handle_mini_batch(service, samples):
     return json_results
 
 
+def _batches(samples, max_batch_size):
+    """
+    There must be a more elegant way to split the sequence into batches
+    """
+    n = len(samples)
+    batch_samples = []
+    for i, sample in enumerate(samples):
+        batch_samples.append(sample)
+        if len(batch_samples) < max_batch_size and i + 1 < n:
+            continue  # ugh
+
+        yield batch_samples
+        batch_samples = []
+
+
 def handle(torchserve_data, context):
     if not _service.initialized:
         _service.initialize(context)
@@ -370,18 +386,21 @@ def handle(torchserve_data, context):
     )
     # Adapt this to your model. The GPU has 16Gb of RAM.
 
-    # samples should be sorted by language pair, but in a way that allows the
-    # original order to be recovered
-    max_batch_size = 1
-    results = []
-    batch_samples = []
+    # group samples by language pair
+    samples_by_pair = defaultdict(list)
     for i, sample in enumerate(samples):
-        batch_samples.append(sample)
-        if len(batch_samples) < max_batch_size and i + 1 < n:
-            continue
+        pair = sample["sourceLanguage"], sample["targetLanguage"]
+        samples_by_pair[pair].append(i, sample)
 
-        results.extend(handle_mini_batch(_service, batch_samples))
-        batch_samples = []
+    # batch separately within each group
+    results = [None for i in range(len(samples))]
+    max_batch_size = 16
+    for pair, pair_samples in samples_by_pair.item():
+        for batch in _batches(pair_samples, max_batch_size):
+            batch_ix, batch_samples = zip(*batch)
+            batch_results = handle_mini_batch(_service, batch_samples)
+            for i, br in zip(batch_ix, batch_results):
+                results[i] = br
 
     assert len(results)
     start_time = time.time()
