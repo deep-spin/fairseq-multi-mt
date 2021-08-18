@@ -6,7 +6,6 @@ import time
 import os
 from pathlib import Path
 from argparse import Namespace
-import pickle
 
 import fairseq.checkpoint_utils
 import sentencepiece
@@ -398,9 +397,14 @@ def _load_test_data(path):
 
 
 def local_test():
+    import pickle
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("test_pickle", default="test_data.pickle")
+    opt = parser.parse_args()
 
     # bin_data = b"\n".join(json.dumps(d).encode("utf-8") for d in flores_small2.data)
-    test_data = _load_test_data("test_data.pickle")
+    test_data = _load_test_data(opt.test_pickle)
     bin_data = b"\n".join(test_data)
     torchserve_data = [{"body": bin_data}]
 
