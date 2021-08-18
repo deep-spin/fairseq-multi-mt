@@ -16,7 +16,7 @@ def create_examples(multitext_ex, n_pairs):
     all_pairs = permutations(languages, 2)
     for i in range(n_pairs):
         src, tgt = next(all_pairs)
-        ret = {"uid": uuid.uuid4() + "-" + multitext_ex["uid"]}
+        ret = {"uid": str(uuid.uuid4()) + "-" + multitext_ex["uid"]}
         ret["sourceLanguage"] = src
         ret["targetLanguage"] = tgt
         ret["sourceText"] = multitext_ex[src]
