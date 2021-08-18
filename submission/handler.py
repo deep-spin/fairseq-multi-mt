@@ -393,8 +393,9 @@ def local_test():
     from dynalab.tasks import flores_small2
 
     # bin_data = b"\n".join(json.dumps(d).encode("utf-8") for d in flores_small2.data)
-    with open("test_examples") as f:
-        bin_data = b"\n".join(json.dumps(d).encode("utf-8") for d in f)
+    with open("test_data.pickle") as f:
+        test_data = pickle.load(f)
+        bin_data = b"\n".join([json.dumps(d).encode("utf-8") for d in test_data])
     torchserve_data = [{"body": bin_data}]
 
     manifest = {"model": {"serializedFile": "model.pt"}}

@@ -4,6 +4,7 @@ from os.path import join
 import sys
 from itertools import permutations
 from random import shuffle
+import pickle
 
 
 def create_examples(multitext_ex, n_pairs):
@@ -34,9 +35,11 @@ def main():
                 lang_ex = f.readline().strip()
                 multitext[i][language] = lang_ex
 
+    output = []
     for example in multitext:
         for ex in create_examples(example, 3):
-            print(ex)
+            output.append(ex)
+    pickle.dump(output, "test_data.pickle")
 
 
 if __name__ == "__main__":
