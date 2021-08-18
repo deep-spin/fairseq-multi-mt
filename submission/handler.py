@@ -390,13 +390,18 @@ def handle(torchserve_data, context):
     return [response]
 
 
+def _load_test_data(path):
+    with open(path, "rb") as f:
+        unpickled = pickle.load(f, encoding="utf-8")
+        test_data = [json.dumps(d).encode("utf-8") for d in unpickled]
+        return test_data
+
+
 def local_test():
-    from dynalab.tasks import flores_small2
 
     # bin_data = b"\n".join(json.dumps(d).encode("utf-8") for d in flores_small2.data)
-    with open("test_data.pickle", "rb") as f:
-        test_data = pickle.load(f, encoding="utf-8")
-        bin_data = b"\n".join([json.dumps(d).encode("utf-8") for d in test_data])
+    test_data = _load_test_data("test_data.pickle")
+    bin_data = b"\n".join(test_data)
     torchserve_data = [{"body": bin_data}]
 
     manifest = {"model": {"serializedFile": "model.pt"}}
@@ -411,8 +416,8 @@ def local_test():
     print(batch_responses)
 
     single_responses = [
-        handle([{"body": json.dumps(d).encode("utf-8")}], ctx)[0]
-        for d in flores_small2.data
+        handle([{"body": test_ex}], ctx)[0]
+        for test_ex in test_data
     ]
     assert batch_responses == ["\n".join(single_responses)]
 
