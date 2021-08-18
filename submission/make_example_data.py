@@ -26,8 +26,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("flores_path")
     parser.add_argument("out_path")
-    parser.add_argument("--n_examples", dtype=int, default=100)
-    parser.add_argument("--pairs_per", dtype=int, default=2)
+    parser.add_argument("--n_examples", type=int, default=100)
+    parser.add_argument("--pairs_per", type=int, default=2)
     opt = parser.parse_args()
     languages = ["eng", "ind", "jav", "msa", "tam", "tgl"]
 
