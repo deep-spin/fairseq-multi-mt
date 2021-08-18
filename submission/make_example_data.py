@@ -5,6 +5,7 @@ from itertools import permutations
 from random import shuffle
 import pickle
 import argparse
+import uuid
 
 
 def create_examples(multitext_ex, n_pairs):
@@ -15,7 +16,7 @@ def create_examples(multitext_ex, n_pairs):
     all_pairs = permutations(languages, 2)
     for i in range(n_pairs):
         src, tgt = next(all_pairs)
-        ret = {"uid": multitext_ex["uid"]}
+        ret = {"uid": uuid.uuid4() + "-" + multitext_ex["uid"]}
         ret["sourceLanguage"] = src
         ret["targetLanguage"] = tgt
         ret["sourceText"] = multitext_ex[src]
