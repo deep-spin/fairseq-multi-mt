@@ -39,7 +39,8 @@ def main():
     for example in multitext:
         for ex in create_examples(example, 3):
             output.append(ex)
-    pickle.dump(output, "test_data.pickle")
+    with open("test_data.pickle", "w") as f:
+        pickle.dump(output, f)
 
 
 if __name__ == "__main__":
