@@ -449,6 +449,7 @@ def local_test():
             print(split_batch_responses[i])
             print("single response:")
             print(single_response)
+            assert split_batch_responses[i] == single_response
 
     '''
     single_responses = [
