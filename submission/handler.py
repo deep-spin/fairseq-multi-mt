@@ -151,7 +151,7 @@ class Handler(BaseDynaHandler):
                     adapter_dict[k] = v.half()
             return adapter_dict
 
-        half_precision = self.device != torch.device("cpu")
+        half_precision = self.device != "cpu" and self.device != torch.device("cpu")
         for lang in task2_langs:
             self.src_adapters[lang] = _load_adapter("src-{}.pt".format(lang), self.device, half_precision)
             self.tgt_adapters[lang] = _load_adapter("tgt-{}.pt".format(lang), self.device, half_precision)
