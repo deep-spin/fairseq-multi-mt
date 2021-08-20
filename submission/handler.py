@@ -151,9 +151,10 @@ class Handler(BaseDynaHandler):
                     adapter_dict[k] = v.half()
             return adapter_dict
 
+        half_precision = self.device != torch.device("cpu")
         for lang in task2_langs:
-            self.src_adapters[lang] = _load_adapter("src-{}.pt".format(lang), self.device, True)
-            self.tgt_adapters[lang] = _load_adapter("tgt-{}.pt".format(lang), self.device, True)
+            self.src_adapters[lang] = _load_adapter("src-{}.pt".format(lang), self.device, half_precision)
+            self.tgt_adapters[lang] = _load_adapter("tgt-{}.pt".format(lang), self.device, half_precision)
 
         # load one and only *one* of the sets of adapter params with each of
         # the source and checkpoint.
@@ -163,8 +164,9 @@ class Handler(BaseDynaHandler):
         [self.tgt_model], cfg = fairseq.checkpoint_utils.load_model_ensemble(
             [model_pt_path], task=task, adapter_path=tgt_adapter_paths[0]
         )
-        self.src_model.half()
-        self.tgt_model.half()
+        if half_precision:
+            self.src_model.half()
+            self.tgt_model.half()
 
         self._current_pair = task2_langs[0], task2_langs[0]
 
