@@ -46,7 +46,9 @@ def main():
         seg_len = average_length(segmented_corpus)
         avg_pieces = seg_len / unseg_len
         stats[model] = avg_pieces
-    print(stats)
+    ranking = sorted(stats.items(), key=lambda x: x[1])
+    for model in ranking:
+        print(model)
 
 
 if __name__ == "__main__":
