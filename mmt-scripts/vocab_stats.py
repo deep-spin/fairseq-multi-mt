@@ -4,6 +4,14 @@ import argparse
 import sentencepiece as spm
 
 
+flores_names = {"en": "eng",
+                "id": "ind",
+                "jv": "jav",
+                "ms": "msa",
+                "ta": "tam",
+                "tl": "tgl"}
+
+
 def read_corpus(path):
     with open(path) as f:
         return [line.strip() for line in f]
