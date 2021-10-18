@@ -3,6 +3,7 @@
 import argparse
 import sys
 import numpy as np
+from collections import Counter
 
 
 def read_vocab(path):
@@ -20,7 +21,7 @@ def read_embeddings(path):
         embs = dict()
         f.readline()
         for line in f:
-            word_type = line.split(" ", 1)[0]
+            word_type = line.split(None, 1)[0]
             embs[word_type] = line
         return embs
 
@@ -50,24 +51,31 @@ def main():
 
     emb_matrix = read_embeddings(opt.embeddings)
     language_embeddings = {k: v for k, v in emb_matrix.items() if k.startswith("__")}
-
+    sys.stderr.write("lang emb length: {}\n".format(len(language_embeddings)))
+    sys.stderr.write("languages: {}".format(" ".join(list(language_embeddings.keys()))))
+    sys.stderr.write("input emb matrix length: {}\n".format(len(emb_matrix)))
+    
     # so, the embeddings are in a huge file, where each line (except the first)
-    #
+    in_matrix = 0
+    out_of_matrix = 0
     sys.stdout.write("stupid obligatory header\n")
     for special in ["<s>", "<pad>", "</s>", "<unk>"]:
         sys.stdout.write(emb_matrix[special])
     with open(opt.new_dict) as f:
         for line in f:
-            word_type = line.split(" ", 1)[0]
+            word_type = line.split(None, 1)[0]
             if word_type in emb_matrix:
+                in_matrix += 1
                 sys.stdout.write(emb_matrix[word_type])
             else:
                 # create new embedding using same strategy as fairseq
+                out_of_matrix += 1
                 sys.stdout.write(generate_new_embedding(word_type, emb_dim))
         for k, v in language_embeddings.items():
             # make sure not to exclude the language embeddings, which are
             # included in the flores model's dict but not included in
             sys.stdout.write(v)
+    sys.stderr.write("in: {} ; out: {}\n".format(in_matrix, out_of_matrix))
 
 
 if __name__ == "__main__":
