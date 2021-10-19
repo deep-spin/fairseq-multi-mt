@@ -57,18 +57,13 @@ def export_vocab(model_path, old_dict, new_dict):
     kept_emb = src_emb_matrix[kept_ix]
 
     # add new types at the end
-    unseen_emb = generate_new_embeddings(len(new_types), d)
+    unseen_emb = kept_emb.new_empty(len(new_types), d)
+    torch.nn.init.normal_(unseen_emb, mean=0, std=d ** -0.5)
     new_emb = torch.cat([kept_emb, unseen_emb])
     final_vocab = kept_vocab + new_types
     assert len(final_vocab) == new_emb.size(0), \
         "Embeddings and vocab do not match"
     return new_emb, final_vocab
-
-
-def generate_new_embeddings(n_embeddings, dimension):
-    # eventually do this:
-    # nn.init.normal_(m.weight, mean=0, std=embedding_dim ** -0.5)
-    return torch.randn(n_embeddings, dimension)
 
 
 def write_vocab(word_types, path):
