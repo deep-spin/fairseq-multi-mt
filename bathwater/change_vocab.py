@@ -71,9 +71,11 @@ def write_vocab(word_types, path):
     word_types: the vocabulary, presented as a list, already including all
             special characters
     """
+    specials = {"<s>", "<pad>", "</s>", "<unk>"}
     with open(path, "w") as f:
         for word_type in word_types:
-            f.write("\t".join([word_type, "1"]) + "\n")
+            if word_type not in specials:
+                f.write(" ".join([word_type, "1"]) + "\n")
 
 
 def main():
