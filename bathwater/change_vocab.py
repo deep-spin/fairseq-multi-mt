@@ -11,6 +11,7 @@ import argparse
 import sys
 import os
 from os.path import join
+import re
 
 import torch
 
@@ -38,10 +39,9 @@ def export_vocab(model_path, old_dict, new_dict):
     # which old indices do we keep?
     old_vocab = read_vocab(old_dict)
     new_vocab = set(read_vocab(new_dict))
-    language_embeddings = {t for t in old_vocab if t.startswith("__")}
+    language_embeddings = {t for t in old_vocab if re.search(r'__[a-z][a-z]+__', t)}
     new_vocab.update(language_embeddings)
 
-    # other things that need to be kept: language embedding
     kept_ix = [i for i, t in enumerate(old_vocab) if t in new_vocab]
     kept_vocab = [t for t in old_vocab if t in new_vocab]
     new_types = list(new_vocab - set(old_vocab))
