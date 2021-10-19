@@ -20,7 +20,7 @@ def read_vocab(path):
     specials = ["<s>", "<pad>", "</s>", "<unk>"]
     with open(path) as f:
         # move the specials to the front
-        types = [line.rstrip().split(None, 1)[0] for line in f]
+        types = [line.rstrip().split(" ")[0] for line in f]
         return specials + [t for t in types if t not in specials]
 
 
