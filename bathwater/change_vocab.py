@@ -16,12 +16,12 @@ import re
 import torch
 
 
-def read_vocab(path):
+def read_vocab(path, delim):
     specials = ["<s>", "<pad>", "</s>", "<unk>"]
     with open(path) as f:
         # move the specials to the front
         # delimiter could be tab or space (spm does one, fairseq the other)
-        types = [line.rstrip().split()[0] for line in f]
+        types = [line.rstrip().split(delim)[0] for line in f]
         return specials + [t for t in types if t not in specials]
 
 
@@ -38,8 +38,8 @@ def export_vocab(model_path, old_dict, new_dict):
     V should equal this length of this vocab (throw an error if it doesn't)
     """
     # which old indices do we keep?
-    old_vocab = read_vocab(old_dict)
-    new_vocab = set(read_vocab(new_dict))
+    old_vocab = read_vocab(old_dict, " ")
+    new_vocab = set(read_vocab(new_dict, "\t"))
     language_embeddings = {t for t in old_vocab if re.search(r'__[a-z][a-z]+__', t)}
     new_vocab.update(language_embeddings)
 
