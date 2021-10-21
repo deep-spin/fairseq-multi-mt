@@ -10,8 +10,8 @@ CHECKPOINT_PATH=$2
 # many of these options are copied from https://github.com/pytorch/fairseq/issues/3343
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
-    /mnt/data/bpop/wmt-multi/task2-data/bin/ \
-    --finetune-from-model /mnt/data/bpop/wmt-multi/test-toy-char/model.pt \
+    /mnt/data/bpop/wmt-multi/char-data/bin/ \
+    --finetune-from-model /mnt/data/bpop/wmt-multi/full-char-model/model.pt \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
