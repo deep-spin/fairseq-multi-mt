@@ -16,7 +16,7 @@ fairseq-train \
     --encoder-normalize-before \
     --langs $( cat /mnt/data/bpop/wmt-multi/flores101_mm100_175M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
     --lang-pairs "en-id,id-en,en-jv,jv-en,en-ms,ms-en,en-ta,ta-en,en-tl,tl-en,id-jv,jv-id,id-ms,ms-id,id-ta,ta-id,id-tl,tl-id,jv-ms,ms-jv,jv-ta,ta-jv,jv-tl,tl-jv,ms-ta,ta-ms,ms-tl,tl-ms,ta-tl,tl-ta" \
-    --max-tokens 1024 \
+    --max-tokens 2048 \
     --decoder-normalize-before \
     --sampling-method temperature \
     --sampling-temperature 5 \
@@ -30,13 +30,13 @@ fairseq-train \
     --lr-scheduler inverse_sqrt \
     --lr 3e-05 \
     --warmup-updates 4000 \
-    --max-update 250000 \
+    --max-update 5000000 \
     --dropout 0.3 \
     --attention-dropout 0.1 \
     --weight-decay 0.0 \
-    --update-freq 2 \
+    --update-freq 4 \
     --keep-best-checkpoints 1 \
-    --save-interval-updates 20000 \
+    --save-interval-updates 100000 \
     --no-epoch-checkpoints \
     --seed 222 \
     --log-format simple \
