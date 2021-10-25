@@ -31,7 +31,7 @@ fairseq-train \
     --lr-scheduler inverse_sqrt \
     --lr 3e-04 \
     --warmup-updates 2500 \
-    --max-epochs 5 \
+    --max-epoch 5 \
     --dropout 0.1 \
     --attention-dropout 0.1 \
     --weight-decay 0.0 \
