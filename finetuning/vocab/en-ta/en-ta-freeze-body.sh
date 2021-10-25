@@ -56,4 +56,5 @@ fairseq-train \
     --memory-efficient-fp16 \
     --ddp-backend no_c10d \
     --finetune-enc-modules embed_tokens \
-    --finetune-dec-modules embed_tokens
+    --finetune-dec-modules embed_tokens \
+    --tensorboard-logdir $CHECKPOINT_PATH/tb

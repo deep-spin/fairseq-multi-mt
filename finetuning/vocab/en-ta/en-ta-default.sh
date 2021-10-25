@@ -54,4 +54,5 @@ fairseq-train \
     --share-all-embeddings \
     --fp16 \
     --memory-efficient-fp16 \
-    --ddp-backend no_c10d
+    --ddp-backend no_c10d \
+    --tensorboard-logdir $CHECKPOINT_PATH/tb
