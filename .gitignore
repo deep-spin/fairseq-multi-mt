@@ -142,3 +142,6 @@ wandb/
 *_tools*
 *_notes*
 *_models*
+
+# sentencepiece vocabularies and models
+vocabs/
