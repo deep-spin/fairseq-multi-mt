@@ -20,9 +20,9 @@ def main(args):
         foo = None
         
     for vocab_size in args.vocab_sizes:
-        model_dir = "vocabs/ta/{}".format(args.model_type)
+        model_dir = "vocabs/ta/{}/vocab-{}".format(args.model_type, vocab_size)
         os.makedirs(model_dir, exist_ok=True)
-        prefix = os.path.join(model_dir, "vocab-{}".format(vocab_size), "m")
+        prefix = os.path.join(model_dir, "m")
         spm.SentencePieceTrainer.train(
             input=args.corpus,
             model_prefix=prefix,
