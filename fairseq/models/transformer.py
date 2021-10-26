@@ -353,9 +353,9 @@ class TransformerModel(FairseqEncoderDecoderModel):
             _freeze(decoder)
             _unfreeze(decoder, finetune_dec_modules)
 
-        if args.encoder_freeze_embed:
+        if getattr(args, "encoder_freeze_embed", False):
             encoder_embed_tokens.weight.requires_grad = False
-        if args.decoder_freeze_embed:
+        if getattr(args, "decoder_freeze_embed", False):
             decoder_embed_tokens.weight.requires_grad = False
 
         return cls(args, encoder, decoder)
