@@ -18,9 +18,10 @@ def read_vocab(path):
 def main(args):
     if args.baseline_vocab is not None:
         foo = None
+    language = args.corpus.split(".")[-1]
         
     for vocab_size in args.vocab_sizes:
-        model_dir = "vocabs/ta/{}/vocab-{}".format(args.model_type, vocab_size)
+        model_dir = "vocabs/{}/{}/vocab-{}".format(language, args.model_type, vocab_size)
         os.makedirs(model_dir, exist_ok=True)
         prefix = os.path.join(model_dir, "m")
         spm.SentencePieceTrainer.train(
