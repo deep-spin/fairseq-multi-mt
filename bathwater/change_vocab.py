@@ -25,7 +25,7 @@ def read_vocab(path, delim):
         return specials + [t for t in types if t not in specials]
 
 
-def export_vocab(model_path, old_dict, new_dict):
+def export_vocab(model_path, old_dict, new_dict, new_delim="\t"):
     """
     Inputs:
     - a model (.pt file path)
@@ -39,7 +39,7 @@ def export_vocab(model_path, old_dict, new_dict):
     """
     # which old indices do we keep?
     old_vocab = read_vocab(old_dict, " ")
-    new_vocab = set(read_vocab(new_dict, "\t"))
+    new_vocab = set(read_vocab(new_dict, new_delim))
     language_embeddings = {t for t in old_vocab if re.search(r'__[a-z][a-z]+__', t)}
     new_vocab.update(language_embeddings)
 
@@ -85,7 +85,9 @@ def main():
     parser.add_argument("old_dict")
     parser.add_argument("new_dict")
     parser.add_argument("out_dir")
+    parser.add_argument("--new_delim", default="tab", choices=["tab", "space"])
     opt = parser.parse_args()
+    new_delim = "\t" if opt.new_delim == "tab" else " "
 
     # 1. make out_dir: it's where the resulting dictionary and pt files will go
     sys.stderr.write("Making new model directory at {}\n".format(opt.out_dir))
@@ -96,7 +98,7 @@ def main():
     # 3. Add new rows for any items in the new vocabulary that the old vocabulary
     #    does not cover. Initially, just do this randomly.
     sys.stderr.write("Extracting embedding matrix from {}\n".format(opt.model))
-    new_emb, new_vocab = export_vocab(opt.model, opt.old_dict, opt.new_dict)
+    new_emb, new_vocab = export_vocab(opt.model, opt.old_dict, opt.new_dict, new_delim=new_delim)
 
     # Write the new vocabulary to the output path
     vocab_outpath = join(opt.out_dir, "dict.txt")
