@@ -10,7 +10,7 @@ CHECKPOINT_PATH=$1
 # adapted from https://github.com/pytorch/fairseq/issues/3233#issuecomment-802020438
 fairseq-train \
     /mnt/data/bpop/wmt-multi/filtered-data/task2/small-vocab/bin/ \
-    --finetune-from-model /mnt/data/bpop/wmt-multi/flores101_mm100_175M/model.pt \
+    --finetune-from-model /mnt/data/bpop/wmt-multi/flores_small_task2_vocab/model.pt \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
