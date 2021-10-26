@@ -255,6 +255,10 @@ class TransformerModel(FairseqEncoderDecoderModel):
             default=None,
             help="If not None then freeze all modules except for the specified ones",
         )
+        parser.add_argument('--encoder-freeze-embed', action='store_true',
+                            help='freeze encoder embeddings (applied after other freezing/unfreezing)')
+        parser.add_argument('--decoder-freeze-embed', action='store_true',
+                            help='freeze decoder embeddings (applied after other freezing/unfreezing)')
         # fmt: on
 
     @classmethod
@@ -342,12 +346,17 @@ class TransformerModel(FairseqEncoderDecoderModel):
             if finetune_dec_modules:
                 if not isinstance(finetune_dec_modules, list):
                     finetune_dec_modules = finetune_dec_modules.split(',')
-            logging.info("Freeze/Un-freeze encoder...")  # could be described better
+            logging.info("Freeze/Un-freeze encoder...")
             _freeze(encoder)
             _unfreeze(encoder, finetune_enc_modules)
             logging.info("Freeze/Un-freeze decoder...")
             _freeze(decoder)
             _unfreeze(decoder, finetune_dec_modules)
+
+        if args.encoder_freeze_embed:
+            encoder_embed_tokens.weight.requires_grad = False
+        if args.decoder_freeze_embed:
+            decoder_embed_tokens.weight.requires_grad = False
 
         return cls(args, encoder, decoder)
 
