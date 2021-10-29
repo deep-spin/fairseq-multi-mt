@@ -12,6 +12,7 @@ import sys
 import os
 from os.path import join
 import re
+from itertools import count
 
 import torch
 
@@ -38,33 +39,48 @@ def export_vocab(model_path, old_dict, new_dict, new_delim="\t"):
     V should equal this length of this vocab (throw an error if it doesn't)
     """
     # which old indices do we keep?
-    old_vocab = read_vocab(old_dict, " ")
-    new_vocab = set(read_vocab(new_dict, new_delim))
-    language_embeddings = {t for t in old_vocab if re.search(r'__[a-z][a-z]+__', t)}
-    new_vocab.update(language_embeddings)
+    old_i2s = read_vocab(old_dict, " ")
 
-    kept_ix = [i for i, t in enumerate(old_vocab) if t in new_vocab]
-    kept_vocab = [t for t in old_vocab if t in new_vocab]
-    new_types = list(new_vocab - set(old_vocab))
+    # The language embeddings should be kept whether they are in new_dict or
+    # not. Therefore, they need to be added to the new vocabulary
+    lang_emb = {t for t in old_i2s if re.search(r'__[a-z][a-z]+__', t)}
+
+    # old_s2i: map strings to indices in the original vocabulary
+    old_s2i = {t: i for i, t in enumerate(old_i2s)}
+    # get the langu
+
+    # new_vocab = set(read_vocab(new_dict, new_delim))
+    new_i2s = read_vocab(new_dict, new_delim)
+    new_s2i = {t: i for i, t in enumerate(new_i2s)}
+    # The language embeddings should be kept whether they are in new_dict or
+    # not. Therefore, they need to be added to the new vocabulary
+    raw_new_size = len(new_i2s)
+    new_lang_ix = count(len(new_i2s))
+    for lang in lang_emb:
+        if lang not in new_s2i:
+            new_i2s.append(lang)
+            new_s2i[lang] = next(new_lang_ix)
+    sys.stderr.write("Added {} new language embedding types to the new vocabulary\n".format(len(new_i2s) - raw_new_size))
 
     model = torch.load(model_path)  # a dict
-    # we assume there is only the one embedding matrix
-    src_emb_matrix = model['model']['encoder.embed_tokens.weight']
+    old_matrix = model['model']['encoder.embed_tokens.weight']  # shared
     del model
-    V, d = src_emb_matrix.size()
-    sys.stderr.write("Original embedding matrix size {}\n".format(V))
-    sys.stderr.write("Original vocab size {}\n".format(len(old_vocab)))
+    old_vocab_size, dim = old_matrix.size()
+    sys.stderr.write("Original embedding matrix size {}\n".format(old_vocab_size))
+    sys.stderr.write("Original vocab size {}\n".format(len(old_i2s)))
+    new_vocab_size = len(new_i2s)
+    # instantiate the new embedding matrix randomly.
+    new_matrix = old_matrix.new_empty(new_vocab_size, dim)
+    torch.nn.init.normal_(new_matrix, mean=0, std=dim ** -0.5)
 
-    kept_emb = src_emb_matrix[kept_ix]
-
-    # add new types at the end
-    unseen_emb = kept_emb.new_empty(len(new_types), d)
-    torch.nn.init.normal_(unseen_emb, mean=0, std=d ** -0.5)
-    new_emb = torch.cat([kept_emb, unseen_emb])
-    final_vocab = kept_vocab + new_types
-    assert len(final_vocab) == new_emb.size(0), \
-        "Embeddings and vocab do not match"
-    return new_emb, final_vocab
+    # Iterate over new vocabulary. If the type exists in the old vocabulary,
+    # use it instead of the random embedding.
+    # We could also be clever to avoid the for-loop, but I'm sick of cleverness
+    for i, t in enumerate(new_i2s):
+        if t in old_s2i:
+            old_i = old_s2i[t]
+            new_matrix[i] = old_matrix[old_i]
+    return new_matrix, new_i2s
 
 
 def write_vocab(word_types, path):
@@ -98,7 +114,9 @@ def main():
     # 3. Add new rows for any items in the new vocabulary that the old vocabulary
     #    does not cover. Initially, just do this randomly.
     sys.stderr.write("Extracting embedding matrix from {}\n".format(opt.model))
-    new_emb, new_vocab = export_vocab(opt.model, opt.old_dict, opt.new_dict, new_delim=new_delim)
+    new_emb, new_vocab = export_vocab(
+        opt.model, opt.old_dict, opt.new_dict, new_delim=new_delim
+    )
 
     # Write the new vocabulary to the output path
     vocab_outpath = join(opt.out_dir, "dict.txt")
