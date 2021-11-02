@@ -40,3 +40,4 @@ if __name__ == "__main__":
     parser.add_argument("out")
     parser.add_argument("-k", type=int, default=5)
     opt = parser.parse_args()
+    main(opt)
