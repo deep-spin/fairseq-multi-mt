@@ -129,6 +129,7 @@ def main():
     model = torch.load(opt.model)
     model['model']['encoder.embed_tokens.weight'] = new_emb
     model['model']['decoder.embed_tokens.weight'] = new_emb
+    model['model']['decoder.output_projection.weight'] = new_emb
     # is this sufficient? I hope so.
     torch.save(model, model_out)
 
