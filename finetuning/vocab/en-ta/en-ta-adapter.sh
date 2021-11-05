@@ -6,7 +6,6 @@ CHECKPOINT_PATH=$1
 
 fairseq-train \
     /mnt/data/bpop/wmt-multi/filtered-data/task2/normal-vocab/bin/ \
-    --finetune-from-model /mnt/data/bpop/wmt-multi/flores101_mm100_175M/model.pt \
     --save-dir $CHECKPOINT_PATH \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
@@ -58,4 +57,7 @@ fairseq-train \
     --adapter-dec-dim 512 \
     --adapter-dec-type 'per_lang' \
     --finetune-enc-modules adapter \
-    --finetune-dec-modules adapter
+    --finetune-dec-modules adapter \
+    --load-pretrained-encoder-from /mnt/data/bpop/wmt-multi/flores101_mm100_175M/model.pt \
+    --load-pretrained-decoder-from /mnt/data/bpop/wmt-multi/flores101_mm100_175M/model.pt \
+    --homogeneous-batch
