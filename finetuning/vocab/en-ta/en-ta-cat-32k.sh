@@ -16,7 +16,7 @@ fairseq-train \
     --task translation_multi_simple_epoch \
     --encoder-normalize-before \
     --langs $( cat /mnt/data/bpop/wmt-multi/flores101_mm100_175M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
-    --lang-pairs "en-tl,tl-en" \
+    --lang-pairs "en-ta,ta-en" \
     --max-tokens 1024 \
     --update-freq 2 \
     --decoder-normalize-before \
