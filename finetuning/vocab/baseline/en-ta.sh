@@ -18,7 +18,7 @@ fairseq-train \
     --encoder-normalize-before \
     --langs $( cat /mnt/data/bpop/wmt-multi/flores101_mm100_175M/language_pairs.txt | tr "," "\n" | cut -f 1 -d "-" | sort | uniq | perl -pe 'chomp if eof' | tr "\n" "," ) \
     --lang-pairs "en-ta,ta-en" \
-    --max-tokens 2048 \
+    --max-tokens 1024 \
     --update-freq 2 \
     --decoder-normalize-before \
     --sampling-method temperature \
