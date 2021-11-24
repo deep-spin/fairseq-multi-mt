@@ -36,7 +36,7 @@ fairseq-train \
     --attention-dropout 0.1 \
     --weight-decay 0.0 \
     --keep-best-checkpoints 1 \
-    --save-interval-updates 20000 \
+    --save-interval-updates 200000 \
     --seed 222 \
     --log-format simple \
     --log-interval 10 \
